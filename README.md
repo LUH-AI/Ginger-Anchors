@@ -21,6 +21,9 @@ Additionally:
 * Installation instructions (in this README.md)
 * If feasible, run your experiments with several random seeds. Try to create reproducabile results.
 
+References:
+* Paper Reference: https://homes.cs.washington.edu/~marcotcr/aaai18.pdf
+* Code Reference: https://github.com/marcotcr/anchor
 
 ## Installation
 
