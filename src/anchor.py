@@ -1,54 +1,27 @@
 
-## Pseudocode:
-# Bottom-up approach
-"""
+class TabularAnchor:
 
-initialise empty Anchor
-A = []
-while True:
-    candidates = [A + a_i for a_i in features]
-    best = get_best_candidate(candidates)
-    if prec(best) >= tau:
-        break
-    else:
-        while lb(best) < tau < up(best):
-            sample instance
-            predict instance
-            update candidates' precision and bounds
-        if lb(A) > tau:
-            break
-return best
-"""
+    def __init__(self) -> None:
+        self.ub = None # upper bound
+        self.lb = None # lower bound
+        self.mean = None # expected precision
+        self.coverage = None
+        self.n_samples = 0
 
-# get_best_candidate:
+        self.gt = [] # greater than rules such as ("height", 150)
+        self.lt = [] # less than rules
+        self.eq = [] # equal to rules
 
-"""
-A =  best mean candidate
-A' =  best ub candidate
-while A.lb > A'.ub (with tolerance eps):
-    sample instance that satisfies A / A' from neighborhood
-    predict instance with model
-    update candidates' precision and bounds
-return best mean candidate
-...
+    def sample_instance(self):
+        sample = None
+        return sample
 
-"""
+    def is_satisfied(self, instance):
+        g = all(instance[condition] >= value for condition, value in self.gt)
+        l = all(instance[condition] <= value for condition, value in self.lt)
+        e = all(instance[condition] == value for condition, value in self.eq)
+        return g and l and e
 
-# beam search:
-"""
-A* = []
-A_0 = []
-while True:
-    candidates = [A + a_i for a_i in features if cov(A + a_i) > cov(A)]
-    A_t = get_b_best_candidates(candidates)
-    if not A_t:
-        break
-    for A in [A for A in A_t if lb(A) > tau]:
-        if cov(A) > cov(A*):
-            A* = A
-return A*
-
-"""
 
 # get_b_best_candidates:
 """
