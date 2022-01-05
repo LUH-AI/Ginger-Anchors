@@ -28,9 +28,9 @@ References:
 ## Installation
 
 Create a conda environment
-  ```
-  conda create -n anchors python=3.9
-  conda activate anchors
+  ```bash
+  conda env create
+  conda activate ginger-anchors
   ```
   
  ...
