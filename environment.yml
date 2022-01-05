@@ -6,12 +6,11 @@ channels:
   - defaults
 dependencies:
   - pip>=21.2
-  - python>=3.8
+  - python>=3.9
   - cudatoolkit=11.3
   - pytorch>=1.10
   - pandas
   - numpy
-  - smac # requires swig
   - seaborn
   - pytest
   - pip:
