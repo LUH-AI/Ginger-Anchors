@@ -12,6 +12,9 @@ class TabularAnchor:
         self.lt = [] # less than rules
         self.eq = [] # equal to rules
 
+    def get_current_features(self):
+        return [feat for feat,_ in self.gt + self.lt + self.eq]
+
     def sample_instance(self):
         sample = None
         return sample
