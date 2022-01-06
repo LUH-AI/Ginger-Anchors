@@ -7,6 +7,7 @@ from explainer import Explainer
 
 if "__main__" == __name__:
     # prepare data
+    print("Preparing data...")
     data = pd.read_csv("data/wheat_seeds.csv")
     X_df = data.drop(columns=["Type"])
     X = data.drop(columns=["Type"]).to_numpy()
@@ -15,6 +16,7 @@ if "__main__" == __name__:
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
     
     # prepare model
+    print("Preparing classifier...")
     model = RandomForestClassifier(n_estimators=10)
     model.fit(X_train, y_train)
     preds = model.predict(X_test)
@@ -22,12 +24,12 @@ if "__main__" == __name__:
 
 
     # get anchor-exp explanation
-    explainer = anchor_tabular.AnchorTabularExplainer(["0", "1", "2"], X_df.columns, X_train)
-    exp = explainer.explain_instance(instance, model.predict, 0.95)
-    conditions = exp.names()
-    precision = round(exp.precision(), 2)
-    coverage = round(exp.coverage(), 2)
-    print(conditions, precision, coverage)
+    # explainer = anchor_tabular.AnchorTabularExplainer(["0", "1", "2"], X_df.columns, X_train)
+    # exp = explainer.explain_instance(instance, model.predict, 0.95)
+    # conditions = exp.names()
+    # precision = round(exp.precision(), 2)
+    # coverage = round(exp.coverage(), 2)
+    # print(conditions, precision, coverage)
 
     # get explanation
     exp = Explainer(X_df)
