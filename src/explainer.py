@@ -4,6 +4,7 @@ import ConfigSpace as CS
 import ConfigSpace.hyperparameters as CSH
 import pandas as pd
 import numpy as np
+import random
 
 from custom_anchor import TabularAnchor
 from lucb import get_best_candidate
@@ -16,7 +17,7 @@ class Explainer:
         self.quantiles = {}
         # { feature : [bound1, bound2, bound3] }
         for f in self.features:
-            self.quantiles[f] = np.quantile(X[f], [0.25, 0.5, 0.75])
+            self.quantiles[f] = np.quantile(X[f], np.arange(0,1, 0.05))# [0.25, 0.5, 0.75])
         
         self.feature2index = {f : self.features.index(f) for f in self.features}
         self.cs = get_configspace_for_dataset(X)
@@ -27,21 +28,27 @@ class Explainer:
         anchor = TabularAnchor(self.cs)
         # get quantiles of instance
         rules = generate_rules_for_instance(self.quantiles, instance, self.feature2index)
+        random.shuffle(rules)
         while True:
             # add unused rules to current anchor
             candidates = generate_candidates(anchor, rules)
+            if candidates == []:
+                exit("No anchors found, ¯\_(ツ)_/¯")
             # all this LUCB?
-            anchor = get_best_candidate(candidates)
-            if anchor.precision >= tau:
+            anchor = get_best_candidate(candidates, instance, model)
+            print("Current best:", (anchor.mean), anchor.rules)
+            import time
+            time.sleep(2)
+            if anchor.mean >= tau:
                 break
-            else:
-                while anchor.lb <= tau and tau <= anchor.up:
-                    pass
-                    # sample instance
-                    # predict instance
-                    # update candidates' precision and bounds
-                if anchor.lb > tau:
-                    break
+            # else:
+            #     while anchor.lb <= tau and tau <= anchor.up:
+            #         pass
+            #         # sample instance
+            #         # predict instance
+            #         # update candidates' precision and bounds
+                # if anchor.lb > tau:
+                #     break
         return anchor
 
     def explain_beam_search(self):
@@ -75,6 +82,8 @@ def get_configspace_for_dataset(X : pd.DataFrame):
     return cs
 
 def generate_rules_for_instance(quantiles, instance, feature2index):
+    if len(instance.shape) >= 2:
+        instance = instance.squeeze(0)
     rules = []
     for f, f_quantile in quantiles.items():
         f_idx = feature2index[f]
@@ -96,12 +105,24 @@ def generate_rules_for_instance(quantiles, instance, feature2index):
     return rules
 
 def generate_candidates(anchor, rules):
-    new_anchors = [deepcopy(anchor) for _ in range(len(rules))]
+    print("CALL GENERATE CANDIDATES")
+    anchors_copy = [deepcopy(anchor) for _ in range(len(rules))]
+    new_anchors=  []
     for i, rule in enumerate(rules):
+        # This might need to check whether combined rules still make sense
         if rule[0] in anchor.get_current_features():
+            # compare old feature, operator and value
+            n_f, n_o, n_v = new_rule
+            for old_rule in anchor.rules:
+                if old_rule[0] == n_f:
+                    o_f, o_o, o_v = old_rule
+
+            # l < x < u OK
+            # u > x > l OK
             continue
-        new = new_anchors[i]
+        new = anchors_copy[i] 
         new.add_rule(rule)
+        new_anchors.append(new)
 
     return new_anchors
 

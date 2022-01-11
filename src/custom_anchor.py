@@ -1,14 +1,16 @@
 import ConfigSpace as CS
 import ConfigSpace.hyperparameters as CSH
+import numpy as np
+from lucb import kullback_leibler
 
 class TabularAnchor:
 
     def __init__(self, cs : CS.ConfigurationSpace) -> None:
         self.ub = None # upper bound
         self.lb = None # lower bound
-        self.mean = None # expected precision
         self.coverage = None
         self.n_samples = 0
+        self.correct = 0
 
         self.gt = [] # greater than rules such as ("height", 150)
         self.lt = [] # less than rules
@@ -17,11 +19,36 @@ class TabularAnchor:
 
         self.cs = cs
 
+    @property
+    def mean(self):
+        if self.n_samples == 0:
+            return 0
+        return self.correct / self.n_samples
+
+
+    def compute_ub(self, beta):
+        # LUCB paper equation 4
+        p_mean = self.correct / self.n_samples
+        ub = p_mean + np.sqrt(beta / 2* self.n_samples)
+        q = min(ub, 1)
+        if self.n_samples * kullback_leibler(p_mean, q) > beta:
+            ub = (ub + p_mean) / 2
+        self.ub = ub
+
+
+    def compute_lb(self, beta):
+        p_mean = self.correct / self.n_samples
+        lb = p_mean - np.sqrt(beta / 2* self.n_samples)
+        q = max(min(lb, 1), 0)
+        if self.n_samples * kullback_leibler(p_mean, q) > beta:
+            lb = (lb + p_mean) / 2
+        self.lb = lb
+
     def get_current_features(self):
         return [feat for feat,_ in self.gt + self.lt + self.eq]
 
     def sample_instance(self):
-        return self.cs.sample_configuration()
+        return self.cs.sample_configuration().get_array().reshape(1, -1)
 
     def is_satisfied(self, instance):
         if self.gt == []:
@@ -87,25 +114,6 @@ class TabularAnchor:
 
         for f in self.cs.get_hyperparameter_names():
             if not f in new_cs.get_hyperparameter_names():
-                print("Take old", f)
                 new_cs.add_hyperparameter(self.cs.get_hyperparameter(f))
-            else:
-                print("Take new", f)
         self.cs = new_cs
-        print(self.cs)
 
-# get_b_best_candidates:
-"""
-
-"""
-
-"""
-question:
-ucb mit delta (pseudocode)
-update bounds https://github.com/marcotcr/anchor/blob/d55f1b480f2326819ae43b1f5c4e7b8892912f30/anchor/anchor_base.py#L76
-dup_bernoulli bekommt als argument beta/n_samples
-beta -> compute beta: https://github.com/marcotcr/anchor/blob/d55f1b480f2326819ae43b1f5c4e7b8892912f30/anchor/anchor_base.py#L53
-
-b-best-candidates?
-pairwise comparison?
-"""
