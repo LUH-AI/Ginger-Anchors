@@ -33,6 +33,13 @@ class TabularAnchor:
             return 0
         return self.correct / self.n_samples
 
+    def reset(self):
+        self.ub = None # upper bound
+        self.lb = None # lower bound
+        self.n_samples = 0
+        self.coverage = 0
+        self.correct = 0
+
     def compute_coverage(self, X):
         """Compute the coverage of the current rules with respect to the given dataset.
         Note: Coverage is not defined by multiplying feature range 
