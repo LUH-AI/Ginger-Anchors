@@ -1,4 +1,4 @@
-name: ginger-achors
+name: ginger-anchors
 channels:
   - nvidia
   - pytorch
