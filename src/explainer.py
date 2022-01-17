@@ -145,7 +145,7 @@ def generate_rules_for_instance(quantiles, instance, feature2index):
             if instance[f_idx] > bound and instance[f_idx] < f_quantile[i+1]:
                 rules.append((f, ">=", bound, "<=", f_quantile[i+1]))
                 rules.append((f, ">=", bound))
-                rules.append((f, "<=", bound))
+                rules.append((f, "<=", f_quantile[i+1]))
                 break
 
     return rules
