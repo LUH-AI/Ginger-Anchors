@@ -9,23 +9,48 @@ import random
 from custom_anchor import TabularAnchor
 from lucb import get_best_candidate
 
+# TODO: Categorical hyperparameters in quantiles, rule generation, hyperparameter in CS, coverage
+
 class Explainer:
 
     def __init__(self, X : pd.DataFrame) -> None:
+        """An explainer object from which explanations
+        (aka anchors) for single instances can be computed
+
+        :param X: Dataset used to train the model
+        :type X: pd.DataFrame
+        """        
         self.X = X
         self.features = list(X.columns)
         self.quantiles = {}
         # { feature : [bound1, bound2, bound3] }
         for f in self.features:
-            self.quantiles[f] = np.quantile(X[f], np.arange(0,1, 0.05))# [0.25, 0.5, 0.75])
+            # More quantiles might lead to less predicates per anchor but 
+            # leads to tighter rules (worse coverage)
+            self.quantiles[f] = np.quantile(X[f], [0.25, 0.5, 0.75])# np.arange(0,1, 0.05))#
         
         self.feature2index = {f : self.features.index(f) for f in self.features}
         self.cs = get_configspace_for_dataset(X)
+
+        cov_array = np.array([((X[f] >= self.cs.get_hyperparameter(f).lower) & (X[f] <= self.cs.get_hyperparameter(f).upper)) for f in self.features])
+        self.cov = (np.all(cov_array, axis=0).sum())
         
 
     def explain_bottom_up(self, instance, model, tau=0.95):
+        """Bottom-up Construction of Anchors introduced in M. Ribeiro "Anchors: High-Precision Model-Agnostic Explanations".
+        Rules of the Anchor are greedily generated.
+
+        :param instance: instance to be explained
+        :type instance: np.ndarray
+        :param model: the model that is estimated by the anchor
+        :type model: model
+        :param tau: desired level of precision, defaults to 0.95
+        :type tau: float, optional
+        :return: anchor
+        :rtype: TabularAnchor
+        """        
         # initialise empty Anchor
-        anchor = TabularAnchor(self.cs)
+        anchor = TabularAnchor(self.cs, self.features)
         # get quantiles of instance
         rules = generate_rules_for_instance(self.quantiles, instance, self.feature2index)
         random.shuffle(rules)
@@ -33,22 +58,16 @@ class Explainer:
             # add unused rules to current anchor
             candidates = generate_candidates(anchor, rules)
             if candidates == []:
-                exit("No anchors found, ¯\_(ツ)_/¯")
-            # all this LUCB?
-            anchor = get_best_candidate(candidates, instance, model)
+                exit("No anchors found, ¯\\_(ツ)_/¯")
+            # treat anchors as Mulit-Armed Bandidates
+            anchor = get_best_candidate(candidates, instance, model, tau)
             print("Current best:", (anchor.mean), anchor.rules)
-            import time
-            time.sleep(2)
             if anchor.mean >= tau:
                 break
-            # else:
-            #     while anchor.lb <= tau and tau <= anchor.up:
-            #         pass
-            #         # sample instance
-            #         # predict instance
-            #         # update candidates' precision and bounds
-                # if anchor.lb > tau:
-                #     break
+        
+        cov = anchor.coverage(self.X)
+        anchor.cov = cov/self.cov
+
         return anchor
 
     def explain_beam_search(self):
@@ -68,6 +87,15 @@ class Explainer:
         raise NotImplementedError()
 
 def get_configspace_for_dataset(X : pd.DataFrame):
+    """Creates a ConfigSpace for the given dataset.
+    The hyperparameters bounds are taken from
+    the respective minimum and maximum values of the features.
+
+    :param X: Dataset for which to create the configspace
+    :type X: pd.DataFrame
+    :return: ConfigSpace
+    :rtype: CS.ConfigurationSpace
+    """    
     cs = CS.ConfigurationSpace()
     # https://pandas.pydata.org/pandas-docs/stable/user_guide/basics.html#basics-dtypes
     for f in X.columns:
@@ -82,6 +110,22 @@ def get_configspace_for_dataset(X : pd.DataFrame):
     return cs
 
 def generate_rules_for_instance(quantiles, instance, feature2index):
+    """Generate rules that are satisified by the given instance.
+    Rules bounds are determined by given quantiles.
+    Each quantile generates a 
+    - greater than lower bound
+    - smaller than upper bound
+    - between upper and lower bound
+
+    :param quantiles: Quantile bounds per feature
+    :type quantiles: dict
+    :param instance: The instance to be explained
+    :type instance: np.ndarray
+    :param feature2index: Mapping from feature name to index in instance
+    :type feature2index: dict
+    :return: List of Rule tuples
+    :rtype: list
+    """    
     if len(instance.shape) >= 2:
         instance = instance.squeeze(0)
     rules = []
@@ -100,29 +144,36 @@ def generate_rules_for_instance(quantiles, instance, feature2index):
             
             if instance[f_idx] > bound and instance[f_idx] < f_quantile[i+1]:
                 rules.append((f, ">=", bound, "<=", f_quantile[i+1]))
+                rules.append((f, ">=", bound))
+                rules.append((f, "<=", bound))
                 break
 
     return rules
 
 def generate_candidates(anchor, rules):
-    print("CALL GENERATE CANDIDATES")
+    """Generates new anchor candidates by adding different rules to copies of the same anchor.
+
+    for rules x, y, z, anchor a
+    a1 := a + x
+    a2 := a + y
+    a3 := a + z
+    :param anchor: Anchor to be expanded
+    :type anchor: TabularAnchor
+    :param rules: New rules not yet in anchor
+    :type rules: list
+    :return: New anchor candidates
+    :rtype: list
+    """    
     anchors_copy = [deepcopy(anchor) for _ in range(len(rules))]
     new_anchors=  []
     for i, rule in enumerate(rules):
         # This might need to check whether combined rules still make sense
         if rule[0] in anchor.get_current_features():
-            # compare old feature, operator and value
-            n_f, n_o, n_v = new_rule
-            for old_rule in anchor.rules:
-                if old_rule[0] == n_f:
-                    o_f, o_o, o_v = old_rule
-
-            # l < x < u OK
-            # u > x > l OK
             continue
         new = anchors_copy[i] 
         new.add_rule(rule)
         new_anchors.append(new)
 
     return new_anchors
+
 
