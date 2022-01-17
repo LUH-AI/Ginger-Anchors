@@ -65,8 +65,8 @@ class Explainer:
             if anchor.mean >= tau:
                 break
         
-        cov = anchor.coverage(self.X)
-        anchor.cov = cov/self.cov
+        cov = anchor.compute_coverage(self.X)
+        anchor.coverage = cov / self.cov
 
         return anchor
 

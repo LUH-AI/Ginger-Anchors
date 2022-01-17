@@ -16,6 +16,7 @@ class TabularAnchor:
         self.ub = None # upper bound
         self.lb = None # lower bound
         self.n_samples = 0
+        self.coverage = 0
         self.correct = 0
 
         self.gt = [] # greater than rules such as ("height", 150)
@@ -32,7 +33,16 @@ class TabularAnchor:
             return 0
         return self.correct / self.n_samples
 
-    def coverage(self, X):
+    def compute_coverage(self, X):
+        """Compute the coverage of the current rules with respect to the given dataset.
+        Note: Coverage is not defined by multiplying feature range 
+        but counting the occurences in the dataset satisfying the current rules.
+
+        :param X: Dataset
+        :type X: pd.Dataframe
+        :return: coverage
+        :rtype: float
+        """        
         cov_array = np.array([((X[f] >= self.cs.get_hyperparameter(f).lower) & (X[f] <= self.cs.get_hyperparameter(f).upper)) for f in self.all_features])
         return (np.all(cov_array, axis=0).sum())
 

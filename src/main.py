@@ -1,4 +1,3 @@
-import torch
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 import pandas as pd
@@ -34,7 +33,7 @@ if "__main__" == __name__:
     # get explanation
     exp = Explainer(X_df)
     from custom_anchor import TabularAnchor
-    anchor = TabularAnchor(exp.cs)
+    anchor = TabularAnchor(exp.cs, exp.features)
     anchor.add_rule(('Kernel.Groove', "<=" , 5.04))
     anchor.add_rule(('Asymmetry.Coeff', "<=" , 2.48))
     anchor.add_rule(('Kernel.Width', "<=" , 3.57))
@@ -49,5 +48,7 @@ if "__main__" == __name__:
         if y == gt:
             c += 1
 
-    print(c / n)
-    # anchor = exp.explain_bottom_up(instance, model)
+    print("Ribeiro anchor:", c / n)
+    anchor = exp.explain_bottom_up(instance, model, tau=0.95)
+    print("Precision:", anchor.mean)
+    print("Coverage:", anchor.coverage)
