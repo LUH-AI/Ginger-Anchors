@@ -8,18 +8,20 @@ import random
 
 from custom_anchor import TabularAnchor
 from lucb import get_best_candidate
+from utils import new_logger
 
-# TODO: Categorical hyperparameters in quantiles, rule generation, hyperparameter in CS, coverage
+# TODO: Categorical hyperparameters in quantiles, rule generation (check for hp type, == if categorical),
 
 class Explainer:
 
     def __init__(self, X : pd.DataFrame) -> None:
         """An explainer object from which explanations
-        (aka anchors) for single instances can be computed
+        (aka anchors) for single instances can be computed.
 
         :param X: Dataset used to train the model
         :type X: pd.DataFrame
-        """        
+        """
+        self.logger = new_logger(self.__class__.__name__)  
         self.X = X
         self.features = list(X.columns)
         self.quantiles = {}
@@ -50,9 +52,11 @@ class Explainer:
         :rtype: TabularAnchor
         """        
         # initialise empty Anchor
+        self.logger.debug("Start bottom-up search for {instance}.")
         anchor = TabularAnchor(self.cs, self.features)
         # get quantiles of instance
         rules = generate_rules_for_instance(self.quantiles, instance, self.feature2index)
+        self.logger.debug(f"Generated rules: {rules}")
         random.shuffle(rules)
         while True:
             # add unused rules to current anchor
@@ -61,13 +65,13 @@ class Explainer:
                 exit("No anchors found, ¯\\_(ツ)_/¯")
             # treat anchors as Mulit-Armed Bandidates
             anchor = get_best_candidate(candidates, instance, model, tau)
-            print("Current best:", (anchor.mean), anchor.rules)
+            self.logger.info(f"Current best: P={anchor.mean}, Rules: {anchor.rules}")
             if anchor.mean >= tau:
                 break
         
         cov = anchor.compute_coverage(self.X)
-        anchor.coverage = cov / self.cov
-
+        anchor.coverage = round(cov / self.cov, 4)
+        self.logger.info(f"Found anchor: P={anchor.mean}, C={anchor.coverage}, Rules:{anchor.rules}")
         return anchor
 
     def explain_beam_search(self):
@@ -165,14 +169,16 @@ def generate_candidates(anchor, rules):
     :rtype: list
     """    
     anchors_copy = [deepcopy(anchor) for _ in range(len(rules))]
-    new_anchors=  []
+    new_anchors = []
     for i, rule in enumerate(rules):
-        # This might need to check whether combined rules still make sense
+        # do not enforce different rules on the same feature
         if rule[0] in anchor.get_current_features():
             continue
-        new = anchors_copy[i] 
-        new.add_rule(rule)
+        # reset bounds and add new rule
+        new = anchors_copy[i]
         new.reset()
+
+        new.add_rule(rule)
         new_anchors.append(new)
 
     return new_anchors

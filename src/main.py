@@ -8,10 +8,13 @@ if "__main__" == __name__:
     # prepare data
     print("Preparing data...")
     data = pd.read_csv("data/wheat_seeds.csv")
+    # y = pd.read_csv("data/german_labels.csv")
+    # X_df = data
+    # X = data
     X_df = data.drop(columns=["Type"])
     X = data.drop(columns=["Type"]).to_numpy()
     y = data["Type"].to_numpy()
-    instance = X[3].reshape(1,-1)
+    instance = X[3].reshape(1, -1)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
     
     # prepare model
@@ -32,23 +35,6 @@ if "__main__" == __name__:
 
     # get explanation
     exp = Explainer(X_df)
-    from custom_anchor import TabularAnchor
-    anchor = TabularAnchor(exp.cs, exp.features)
-    anchor.add_rule(('Kernel.Groove', "<=" , 5.04))
-    anchor.add_rule(('Asymmetry.Coeff', "<=" , 2.48))
-    anchor.add_rule(('Kernel.Width', "<=" , 3.57))
-    anchor.add_rule(('Compactness', ">=" , 0.89))
-    c = 0
-    n = 0
-    gt = model.predict(instance)
-    for _ in range(100):
-        n += 1
-        x = anchor.sample_instance()
-        y = model.predict(x)
-        if y == gt:
-            c += 1
-
-    print("Ribeiro anchor:", c / n)
     anchor = exp.explain_bottom_up(instance, model, tau=0.95)
     print("Precision:", anchor.mean)
     print("Coverage:", anchor.coverage)
