@@ -33,7 +33,7 @@ class TabularAnchor:
             return 0
         return self.correct / self.n_samples
 
-    def reset(self):
+    def reset_bounds(self):
         self.ub = None # upper bound
         self.lb = None # lower bound
         self.n_samples = 0

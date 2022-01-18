@@ -176,7 +176,7 @@ def generate_candidates(anchor, rules):
             continue
         # reset bounds and add new rule
         new = anchors_copy[i]
-        new.reset()
+        new.reset_bounds()
 
         new.add_rule(rule)
         new_anchors.append(new)
