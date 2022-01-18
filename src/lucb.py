@@ -22,8 +22,7 @@ def get_best_candidate(anchors, instance, model, tau):
     :return: Best anchor among candidates
     :rtype: TabularAnchor
     """    
-    # LUCB?
-    # init bounds by sampling each anchor once
+    # init bounds by sampling each anchor
     t = 1
     y = model.predict(instance)
     beta = compute_beta(t, len(anchors))
@@ -32,13 +31,11 @@ def get_best_candidate(anchors, instance, model, tau):
             a_x = a.sample_instance()
             a_y = model.predict(a_x)
             a.n_samples += 1
-            # print(a_y, y)
             if a_y == y:
                 a.correct += 1
 
             a.compute_ub(beta)
             a.compute_lb(beta)
-            # print("Mean = ", a.mean)
 
     
     best_ub_anchor = sorted(anchors, key=lambda a : a.ub, reverse=True)[0]
