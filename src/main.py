@@ -38,3 +38,7 @@ if "__main__" == __name__:
     anchor = exp.explain_bottom_up(instance, model, tau=0.95)
     print("Precision:", anchor.mean)
     print("Coverage:", anchor.coverage)
+    print("Sampled:", anchor.n_samples)
+    # anchor = exp.explain_beam_search(instance, model, tau=0.95)
+    # print("Precision:", anchor.mean)
+    # print("Coverage:", anchor.coverage)

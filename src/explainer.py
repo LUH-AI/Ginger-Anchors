@@ -7,7 +7,7 @@ import numpy as np
 import random
 
 from custom_anchor import TabularAnchor
-from lucb import get_best_candidate
+from lucb import get_best_candidate, get_b_best_candidates
 from utils import new_logger
 
 # TODO: Categorical hyperparameters in quantiles, rule generation (check for hp type, == if categorical),
@@ -74,21 +74,31 @@ class Explainer:
         self.logger.info(f"Found anchor: P={anchor.mean}, C={anchor.coverage}, Rules:{anchor.rules}")
         return anchor
 
-    def explain_beam_search(self):
-        """
-        A* = []
-        A_0 = []
+    def explain_beam_search(self, instance, model, tau=0.95):
+        B = 3
+        self.logger.debug("Start bottom-up search for {instance}.")
+        # Init B anchors
+        current_anchors = [TabularAnchor(self.cs, self.features)] * B
+        best_anchor = current_anchors[0]
+        rules = generate_rules_for_instance(self.quantiles, instance, self.feature2index)
+        self.logger.debug(f"Generated rules: {rules}")
+        random.shuffle(rules)
+
         while True:
-            candidates = [A + a_i for a_i in features if cov(A + a_i) > cov(A)]
-            A_t = get_b_best_candidates(candidates)
-            if not A_t:
+            # generate candidates for multiple anchors
+            
+            candidates = [generate_candidates(a, rules) for a in current_anchors]
+            if not candidates:
                 break
-            for A in [A for A in A_t if lb(A) > tau]:
-                if cov(A) > cov(A*):
-                    A* = A
-        return A*
-        """
-        raise NotImplementedError()
+            current_anchors = get_b_best_candidates(candidates, instance, model, tau, B)
+            sufficiently_precise_anchors = [a for a in current_anchors if a.lb > tau]
+            for a in sufficiently_precise_anchors:
+                cov = a.compute_coverage(self.X)
+                if cov > best_anchor.coverage:
+                    best_anchor = a
+                
+
+        return best_anchor
 
 def get_configspace_for_dataset(X : pd.DataFrame):
     """Creates a ConfigSpace for the given dataset.

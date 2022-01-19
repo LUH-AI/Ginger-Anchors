@@ -61,12 +61,19 @@ class TabularAnchor:
         :type beta: float
         """        
         # LUCB paper equation 4
-        p_mean = self.correct / self.n_samples
-        ub = p_mean + np.sqrt(beta / 2* self.n_samples)
-        q = min(ub, 1)
-        if self.n_samples * kullback_leibler(p_mean, q) > beta:
-            ub = (ub + p_mean) / 2
-        self.ub = ub
+        p = self.correct / self.n_samples
+        lm = p
+        level = beta / self.n_samples
+        um = p + np.sqrt(level / 2)
+        um = min(um, 1)
+        qm = (um + lm) / 2
+        kl = kullback_leibler(p, qm)
+        # print(f"{beta=}")
+        # print(f"ub {self.n_samples=}, {level=}, lm or {p=}, {um=}, {qm=}, {kl=}")
+        if kl > level:
+            self.ub = qm
+        else:
+            self.ub = um
 
 
     def compute_lb(self, beta):
@@ -75,12 +82,19 @@ class TabularAnchor:
         :param beta: beta parameter
         :type beta: float
         """        
-        p_mean = self.correct / self.n_samples
-        lb = p_mean - np.sqrt(beta / 2* self.n_samples)
-        q = max(min(lb, 1), 0)
-        if self.n_samples * kullback_leibler(p_mean, q) > beta:
-            lb = (lb + p_mean) / 2
-        self.lb = lb
+        p = self.correct / self.n_samples
+        lm = p
+        level = beta / self.n_samples
+        um = p - np.sqrt(level / 2)
+        um = max(min(um, 1), 0)
+        qm = (um + lm) / 2
+        kl = kullback_leibler(p, qm)
+        # print(f"{beta=}")
+        # print(f"lb {self.n_samples=}, {level=}, lm or {p=}, {um=}, {qm=}, {kl=}")
+        if kl > level:
+            self.lb = qm
+        else:
+            self.lb = um
 
     def get_current_features(self):
         """Features that are currently used in a rule.
