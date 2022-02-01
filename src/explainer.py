@@ -8,6 +8,7 @@ import numpy as np
 import random
 from smac.scenario.scenario import Scenario
 from smac.facade.smac_hpo_facade import SMAC4HPO
+from functools import partial
 
 from custom_anchor import TabularAnchor
 from lucb import get_best_candidate, get_b_best_candidates
@@ -124,13 +125,13 @@ class Explainer:
         # alternative idea, let smac sample from all quantile generated rules with categrocial hpms
         # Target: Find anchor with max precision and max coverage
         if len(instance.shape) == 2:
-            instance = instance.squeeze(0)
+            inst = instance.squeeze(0)
         smac_cs = CS.ConfigurationSpace()
         for f in self.features:
             hp = self.cs.get_hyperparameter(f)
             # TODO: Quantization factor
-            low_hp =  hp.__class__(f + "_lower", lower=hp.lower, upper=instance[self.features.index(f)], log=False)
-            up_hp = hp.__class__(f + "_upper", lower=instance[self.features.index(f)], upper=hp.upper, log=False)
+            low_hp =  hp.__class__(f + "_lower", lower=hp.lower, upper=inst[self.features.index(f)], log=False)
+            up_hp = hp.__class__(f + "_upper", lower=inst[self.features.index(f)], upper=hp.upper, log=False)
             smac_cs.add_hyperparameter(low_hp)
             smac_cs.add_hyperparameter(up_hp)
 
@@ -139,20 +140,20 @@ class Explainer:
             "runcount-limit" : evaluations,
             "cs" : smac_cs
         })
-
-        tae_arguments = {
-            "model" : model,
-            "X" : self.X,
-            "features" : self.features,
-            "instance" : instance,
-            "iterations" : samples_per_iteration
-        }
+        print("instance", instance)
+        tae_func = partial(
+            evaluate_rules_from_cs,
+            model=model,
+            X=self.X,
+            features=self.features,
+            explain=instance,
+            iterations=samples_per_iteration
+            )
 
         optimizer = SMAC4HPO(
             scenario=scenario,
             rng=np.random.RandomState(seed),
-            tae_runner=evaluate_rules_from_cs,
-            tae_runner_kwargs=tae_arguments
+            tae_runner=tae_func,
         )
         incumbent = optimizer.optimize()
 

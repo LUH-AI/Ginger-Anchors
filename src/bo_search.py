@@ -4,18 +4,12 @@ import numpy as np
 
 from custom_anchor import TabularAnchor
 
-def evaluate_rules_from_cs(configuration, **kwargs):
-    print(kwargs)
-    features = 0
-    model = None
-    instance = None
-    y = model(instance)
-    iterations = 100
-    # TODO: need: dataset for coverage, features, model, original instance / class
+def evaluate_rules_from_cs(configuration, model, X, features, explain, iterations):
+    y = model.predict(explain)
     # TODO: construct configspace from configuration
-    cs = ...
+    cs = CS.ConfigurationSpace()
     anchor = TabularAnchor(cs, features)
-    anchor.compute_coverage()
+    anchor.compute_coverage(X)
 
     for i in iterations:
         a_x = anchor.sample_instance()
