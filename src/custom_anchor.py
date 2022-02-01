@@ -14,7 +14,9 @@ class TabularAnchor:
         :type all_features: list
         """        
         self.ub = None # upper bound
+        self.ubs = []
         self.lb = None # lower bound
+        self.lbs = []
         self.n_samples = 0
         self.coverage = 0
         self.correct = 0
@@ -35,7 +37,9 @@ class TabularAnchor:
 
     def reset_bounds(self):
         self.ub = None # upper bound
+        self.ubs = []
         self.lb = None # lower bound
+        self.lbs = []
         self.n_samples = 0
         self.coverage = 0
         self.correct = 0
@@ -51,7 +55,9 @@ class TabularAnchor:
         :rtype: float
         """        
         cov_array = np.array([((X[f] >= self.cs.get_hyperparameter(f).lower) & (X[f] <= self.cs.get_hyperparameter(f).upper)) for f in self.all_features])
-        return (np.all(cov_array, axis=0).sum())
+        points_contained =  (np.all(cov_array, axis=0).sum())
+        self.coverage = round(points_contained / len(X), 4)
+        return self.coverage
 
 
     def compute_ub(self, beta):
@@ -74,6 +80,7 @@ class TabularAnchor:
             self.ub = qm
         else:
             self.ub = um
+        self.ubs.append(self.ub)
 
 
     def compute_lb(self, beta):
@@ -95,6 +102,7 @@ class TabularAnchor:
             self.lb = qm
         else:
             self.lb = um
+        self.lbs.append(self.lb)
 
     def get_current_features(self):
         """Features that are currently used in a rule.
