@@ -1,4 +1,6 @@
 import logging
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # consider init function to take args
 default_level = logging.DEBUG
@@ -8,3 +10,10 @@ def new_logger(name, level=default_level):
     logger = logging.getLogger(name)
     logger.setLevel(level)
     return logger
+
+def plot_bounds(anchor):
+    ax = sns.lineplot(x=list(range(len(anchor.lbs))), y=anchor.lbs, color="black")
+    sns.lineplot(x=list(range(len(anchor.ubs))), y=anchor.ubs, color="orange")
+    f = plt.gcf()
+    f.savefig(f"anchor.png")
+    plt.clf()
