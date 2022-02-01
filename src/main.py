@@ -22,7 +22,7 @@ if "__main__" == __name__:
     model = RandomForestClassifier(n_estimators=10)
     model.fit(X_train, y_train)
     preds = model.predict(X_test)
-    print(sum(preds == y_test) / len(y_test))
+    print("Classifier accuracy:", sum(preds == y_test) / len(y_test))
 
 
     # get anchor-exp explanation
@@ -39,8 +39,11 @@ if "__main__" == __name__:
     # print("Precision:", anchor.mean)
     # print("Coverage:", anchor.coverage)
     # print("Sampled:", anchor.n_samples)
-    anchor = exp.explain_beam_search(instance, model, tau=0.95)
-    print("Precision:", anchor.mean)
-    print("Coverage:", anchor.coverage)
-    print("Sampled:", anchor.n_samples)
-    print("Rules", anchor.rules)
+    # anchor = exp.explain_beam_search(instance, model, tau=0.95, B=3)
+    # print("Precision:", anchor.mean)
+    # print("Coverage:", anchor.coverage)
+    # print("Sampled:", anchor.n_samples)
+    # print("Rules", anchor.rules)
+    anchor = exp.explain_bayesian_optimiziation(instance, model)
+
+    

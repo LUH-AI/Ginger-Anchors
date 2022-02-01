@@ -1,4 +1,4 @@
 ConfigSpace
 anchor-exp
 scikit-learn
-# smac # requires swig
+smac # requires swig

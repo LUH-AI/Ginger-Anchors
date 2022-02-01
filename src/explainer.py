@@ -1,15 +1,18 @@
 from copy import deepcopy
 import enum
+from pyexpat import features
 import ConfigSpace as CS
 import ConfigSpace.hyperparameters as CSH
 import pandas as pd
 import numpy as np
 import random
-
+from smac.scenario.scenario import Scenario
+from smac.facade.smac_hpo_facade import SMAC4HPO
 
 from custom_anchor import TabularAnchor
 from lucb import get_best_candidate, get_b_best_candidates
 from utils import new_logger
+from bo_search import evaluate_rules_from_cs
 
 # TODO: Categorical hyperparameters in quantiles, rule generation (check for hp type, == if categorical),
 
@@ -116,6 +119,48 @@ class Explainer:
 
         self.logger.info(f"Found anchor: P={best_anchor.mean}, C={best_anchor.coverage}, Rules:{best_anchor.rules}")
         return best_anchor
+
+    def explain_bayesian_optimiziation(self, instance, model, tau=0.95, evaluations=100, samples_per_iteration=100, seed=42):
+        # alternative idea, let smac sample from all quantile generated rules with categrocial hpms
+        # Target: Find anchor with max precision and max coverage
+        if len(instance.shape) == 2:
+            instance = instance.squeeze(0)
+        smac_cs = CS.ConfigurationSpace()
+        for f in self.features:
+            hp = self.cs.get_hyperparameter(f)
+            # TODO: Quantization factor
+            low_hp =  hp.__class__(f + "_lower", lower=hp.lower, upper=instance[self.features.index(f)], log=False)
+            up_hp = hp.__class__(f + "_upper", lower=instance[self.features.index(f)], upper=hp.upper, log=False)
+            smac_cs.add_hyperparameter(low_hp)
+            smac_cs.add_hyperparameter(up_hp)
+
+        scenario = Scenario({
+            "run_obj" : "quality",
+            "runcount-limit" : evaluations,
+            "cs" : smac_cs
+        })
+
+        tae_arguments = {
+            "model" : model,
+            "X" : self.X,
+            "features" : self.features,
+            "instance" : instance,
+            "iterations" : samples_per_iteration
+        }
+
+        optimizer = SMAC4HPO(
+            scenario=scenario,
+            rng=np.random.RandomState(seed),
+            tae_runner=evaluate_rules_from_cs,
+            tae_runner_kwargs=tae_arguments
+        )
+        incumbent = optimizer.optimize()
+
+        print(smac_cs)
+        # ub and lb hyperparam per feature -> sample 
+        #  -> construct from explainer configspace
+        # somehow try different number of rules
+        pass
 
     def generate_candidates(self, anchor, rules, min_cov=0):
         """Generates new anchor candidates by adding different rules to copies of the same anchor.
