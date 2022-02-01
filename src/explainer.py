@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import random
 
+
 from custom_anchor import TabularAnchor
 from lucb import get_best_candidate, get_b_best_candidates
 from utils import new_logger
@@ -33,9 +34,6 @@ class Explainer:
         
         self.feature2index = {f : self.features.index(f) for f in self.features}
         self.cs = get_configspace_for_dataset(X)
-
-        cov_array = np.array([((X[f] >= self.cs.get_hyperparameter(f).lower) & (X[f] <= self.cs.get_hyperparameter(f).upper)) for f in self.features])
-        self.cov = (np.all(cov_array, axis=0).sum())
         
 
     def explain_bottom_up(self, instance, model, tau=0.95):
@@ -60,7 +58,7 @@ class Explainer:
         random.shuffle(rules)
         while True:
             # add unused rules to current anchor
-            candidates = generate_candidates(anchor, rules)
+            candidates = self.generate_candidates(anchor, rules)
             if candidates == []:
                 exit("No anchors found, ¯\\_(ツ)_/¯")
             # treat anchors as Mulit-Armed Bandidates
@@ -69,12 +67,11 @@ class Explainer:
             if anchor.mean >= tau:
                 break
         
-        cov = anchor.compute_coverage(self.X)
-        anchor.coverage = round(cov / self.cov, 4)
+        anchor.compute_coverage(self.X)
         self.logger.info(f"Found anchor: P={anchor.mean}, C={anchor.coverage}, Rules:{anchor.rules}")
         return anchor
 
-    def explain_beam_search(self, instance, model, tau=0.95):
+    def explain_beam_search(self, instance, model, tau=0.95, B=1):
         """
         Finds in anchor that explains the given instance w.r.t the model by using beam search.
         In each iteration, beam search keeps a set of good candidates.
@@ -88,7 +85,6 @@ class Explainer:
         :return: anchor
         :rtype: TabularAnchor
         """        
-        B = 3
         self.logger.debug(f"Start bottom-up search for {instance}.")
         # Init B anchors
         current_anchors = [TabularAnchor(self.cs, self.features)]
@@ -96,26 +92,61 @@ class Explainer:
         rules = generate_rules_for_instance(self.quantiles, instance, self.feature2index)
         self.logger.debug(f"Generated rules: {rules}")
         random.shuffle(rules)
-
+        i = 0
         while True:
             # generate candidates for multiple anchors
             candidates = []
             for a in current_anchors:
-                candidates.extend(generate_candidates(a, rules))
+                candidates.extend(self.generate_candidates(a, rules, min_cov=best_anchor.coverage))
+            
             if len(candidates) == 0:
                 break
+            
             current_anchors = get_b_best_candidates(candidates, instance, model, tau, B)
+
+            for a in current_anchors:
+                self.logger.info(f"Current best: P={a.mean} (based on {a.n_samples} samples), Rules: {a.rules}")
+
             sufficiently_precise_anchors = [a for a in current_anchors if a.mean > tau]
             for a in sufficiently_precise_anchors:
-                # TODO: Better coverage
                 cov = a.compute_coverage(self.X)
-                a.coverage = cov
                 if cov > best_anchor.coverage:
                     best_anchor = a
                     self.logger.info(f"Current best: P={best_anchor.mean} (based on {best_anchor.n_samples} samples), Rules: {best_anchor.rules}")
 
         self.logger.info(f"Found anchor: P={best_anchor.mean}, C={best_anchor.coverage}, Rules:{best_anchor.rules}")
         return best_anchor
+
+    def generate_candidates(self, anchor, rules, min_cov=0):
+        """Generates new anchor candidates by adding different rules to copies of the same anchor.
+
+        for rules x, y, z, anchor a
+        a1 := a + x
+        a2 := a + y
+        a3 := a + z
+        :param anchor: Anchor to be expanded
+        :type anchor: TabularAnchor
+        :param rules: New rules not yet in anchor
+        :type rules: list
+        :return: New anchor candidates
+        :rtype: list
+        """    
+        anchors_copy = [deepcopy(anchor) for _ in range(len(rules))]
+        new_anchors = []
+        for i, rule in enumerate(rules):
+            # do not enforce different rules on the same feature
+            if rule[0] in anchor.get_current_features():
+                continue
+            # reset bounds and add new rule
+            new = anchors_copy[i]
+            new.reset_bounds()
+
+            new.add_rule(rule)
+            new.compute_coverage(self.X)
+            if new.coverage > min_cov:
+                new_anchors.append(new)
+
+        return new_anchors
 
 def get_configspace_for_dataset(X : pd.DataFrame):
     """Creates a ConfigSpace for the given dataset.
@@ -181,33 +212,6 @@ def generate_rules_for_instance(quantiles, instance, feature2index):
 
     return rules
 
-def generate_candidates(anchor, rules):
-    """Generates new anchor candidates by adding different rules to copies of the same anchor.
 
-    for rules x, y, z, anchor a
-    a1 := a + x
-    a2 := a + y
-    a3 := a + z
-    :param anchor: Anchor to be expanded
-    :type anchor: TabularAnchor
-    :param rules: New rules not yet in anchor
-    :type rules: list
-    :return: New anchor candidates
-    :rtype: list
-    """    
-    anchors_copy = [deepcopy(anchor) for _ in range(len(rules))]
-    new_anchors = []
-    for i, rule in enumerate(rules):
-        # do not enforce different rules on the same feature
-        if rule[0] in anchor.get_current_features():
-            continue
-        # reset bounds and add new rule
-        new = anchors_copy[i]
-        new.reset_bounds()
-
-        new.add_rule(rule)
-        new_anchors.append(new)
-
-    return new_anchors
 
 

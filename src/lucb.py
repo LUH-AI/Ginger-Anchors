@@ -3,7 +3,7 @@ import numpy as np
 # hyperparameters (see https://proceedings.mlr.press/v30/Kaufmann13.pdf, Section 5)
 ALPHA = 1.1
 HYPER_K = 405.5
-EPS = 0.15
+EPS = 0.20
 DELTA = 0.1
 INIT_SAMPLES = 1
 
