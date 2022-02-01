@@ -89,27 +89,32 @@ class Explainer:
         :rtype: TabularAnchor
         """        
         B = 3
-        self.logger.debug("Start bottom-up search for {instance}.")
+        self.logger.debug(f"Start bottom-up search for {instance}.")
         # Init B anchors
-        current_anchors = [TabularAnchor(self.cs, self.features)] * B
+        current_anchors = [TabularAnchor(self.cs, self.features)]
         best_anchor = current_anchors[0]
         rules = generate_rules_for_instance(self.quantiles, instance, self.feature2index)
-        self.logger.debug("Generated rules:", "\n".join(rules))
+        self.logger.debug(f"Generated rules: {rules}")
         random.shuffle(rules)
 
         while True:
             # generate candidates for multiple anchors
-            
-            candidates = [generate_candidates(a, rules) for a in current_anchors]
-            if not candidates:
+            candidates = []
+            for a in current_anchors:
+                candidates.extend(generate_candidates(a, rules))
+            if len(candidates) == 0:
                 break
             current_anchors = get_b_best_candidates(candidates, instance, model, tau, B)
-            sufficiently_precise_anchors = [a for a in current_anchors if a.lb > tau]
+            sufficiently_precise_anchors = [a for a in current_anchors if a.mean > tau]
             for a in sufficiently_precise_anchors:
+                # TODO: Better coverage
                 cov = a.compute_coverage(self.X)
+                a.coverage = cov
                 if cov > best_anchor.coverage:
                     best_anchor = a
+                    self.logger.info(f"Current best: P={best_anchor.mean} (based on {best_anchor.n_samples} samples), Rules: {best_anchor.rules}")
 
+        self.logger.info(f"Found anchor: P={best_anchor.mean}, C={best_anchor.coverage}, Rules:{best_anchor.rules}")
         return best_anchor
 
 def get_configspace_for_dataset(X : pd.DataFrame):

@@ -26,19 +26,21 @@ if "__main__" == __name__:
 
 
     # get anchor-exp explanation
-    explainer = anchor_tabular.AnchorTabularExplainer(["0", "1", "2"], X_df.columns, X_train)
-    exp = explainer.explain_instance(instance, model.predict, 0.95)
-    conditions = exp.names()
-    precision = round(exp.precision(), 2)
-    coverage = round(exp.coverage(), 2)
-    print(conditions, precision, coverage)
+    # explainer = anchor_tabular.AnchorTabularExplainer(["0", "1", "2"], X_df.columns, X_train)
+    # exp = explainer.explain_instance(instance, model.predict, 0.95)
+    # conditions = exp.names()
+    # precision = round(exp.precision(), 2)
+    # coverage = round(exp.coverage(), 2)
+    # print(conditions, precision, coverage)
 
     # get explanation
     exp = Explainer(X_df)
-    anchor = exp.explain_bottom_up(instance, model, tau=0.95)
+    # anchor = exp.explain_bottom_up(instance, model, tau=0.95)
+    # print("Precision:", anchor.mean)
+    # print("Coverage:", anchor.coverage)
+    # print("Sampled:", anchor.n_samples)
+    anchor = exp.explain_beam_search(instance, model, tau=0.95)
     print("Precision:", anchor.mean)
     print("Coverage:", anchor.coverage)
     print("Sampled:", anchor.n_samples)
-    # anchor = exp.explain_beam_search(instance, model, tau=0.95)
-    # print("Precision:", anchor.mean)
-    # print("Coverage:", anchor.coverage)
+    print("Rules", anchor.rules)
