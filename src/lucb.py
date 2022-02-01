@@ -5,7 +5,7 @@ ALPHA = 1.1
 HYPER_K = 405.5
 EPS = 0.20
 DELTA = 0.1
-INIT_SAMPLES = 1
+INIT_SAMPLES = 10
 
 def get_b_best_candidates(anchors, instance, model, tau, B):
     """

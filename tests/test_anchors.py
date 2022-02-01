@@ -1,4 +1,3 @@
-from re import A
 import pytest
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
@@ -11,14 +10,9 @@ cwd = os.getcwd()
 sys.path.insert(0, cwd + "/src")
 
 from custom_anchor import TabularAnchor
-from explainer import generate_candidates, Explainer, generate_rules_for_instance
+from explainer import Explainer, generate_rules_for_instance
 
 
-
-# what to test:
-#
-# finding simple anchors in obvious cases
-#
 
 @pytest.fixture(scope="session")
 def prepared_data():
@@ -27,7 +21,7 @@ def prepared_data():
     X_df = data.drop(columns=["Type"])
     X = data.drop(columns=["Type"]).to_numpy()
     y = data["Type"].to_numpy()
-    instance = X[3].reshape(1,-1)
+    instance = X[3].reshape(1, -1)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
     
     # prepare model
@@ -43,20 +37,25 @@ def prepared_data():
     prepared["instance"] = instance
     return prepared
 
+def test_empty_anchor_coverage(prepared_data):
+    X = prepared_data["X"]
+    exp = Explainer(X)
+    anchor = TabularAnchor(exp.cs, exp.features)
+    assert anchor.compute_coverage(prepared_data["X"]) == 1
 
 def test_generate_candidates(prepared_data):
     # test whether rules are added correctly
     exp = Explainer(prepared_data["X"])
     anchor = TabularAnchor(exp.cs, exp.features)
     rules = [(exp.features[0], ">=", 0), (exp.features[1], ">=", 1)]
-    candidates = generate_candidates(anchor, rules)
+    candidates = exp.generate_candidates(anchor, rules)
     assert len(candidates) == len(rules)
 
     # tests whether rules for features that already exist are skipped
     anchor = TabularAnchor(exp.cs, exp.features)
     anchor.add_rule((exp.features[0], ">=", 0))
     rules = [(exp.features[0], "<=", 1), (exp.features[1], ">=", 1)]
-    candidates = generate_candidates(anchor, rules)
+    candidates = exp.generate_candidates(anchor, rules)
     assert len(candidates) == len(rules) - 1
 
 def test_sampling_instance(prepared_data):
@@ -111,7 +110,6 @@ def test_rule_generation(prepared_data):
         assert r in got_rules
 
 
-
 def test_add_rule(prepared_data):
     # test adding rules to anchor
     exp = Explainer(prepared_data["X"])
@@ -131,8 +129,17 @@ def test_add_rule(prepared_data):
     hp = anchor.cs.get_hyperparameter(exp.features[2])
     assert hp.lower == prepared_data["X"][exp.features[2]].min()
 
-def test_instance_satisfies_anchor(prepared_data):
+def test_instance_satisfies_anchor_bottomup(prepared_data):
     exp = Explainer(prepared_data["X"])
-    anchor = exp.explain_bottom_up(prepared_data["instance"], prepared_data["model"])
-    print(prepared_data["instance"])
+    anchor = exp.explain_bottom_up(prepared_data["instance"], prepared_data["model"], tau=0.95)
     assert anchor.is_satisfied(prepared_data["instance"])
+    assert anchor.mean > 0.95
+    assert len(anchor.rules) > 1
+    
+def test_instance_satisfies_anchor_beam(prepared_data):
+    exp = Explainer(prepared_data["X"])
+    anchor = exp.explain_beam_search(prepared_data["instance"], prepared_data["model"], B=3, tau=0.95)
+    assert anchor.is_satisfied(prepared_data["instance"])
+    assert anchor.mean > 0.95
+    assert len(anchor.rules) > 1
+
