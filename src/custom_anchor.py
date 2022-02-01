@@ -124,21 +124,23 @@ class TabularAnchor:
         :type instance: np.ndarray
         :return: True if instance satisfies all rules
         :rtype: boolean
-        """        
+        """
+        if len(instance.shape) == 2:
+            instance = instance.squeeze(0)
         if self.gt == []:
             g = True
         else:
-            g = all(instance[condition] >= value for condition, value in self.gt)
+            g = all(instance[self.all_features.index(condition)] >= value for condition, value in self.gt)
 
         if self.lt == []:
             l = True
         else:
-            l = all(instance[condition] <= value for condition, value in self.lt)
+            l = all(instance[self.all_features.index(condition)] <= value for condition, value in self.lt)
 
         if self.eq == []:
             e = True
         else:
-            e = all(instance[condition] == value for condition, value in self.eq)
+            e = all(instance[self.all_features.index(condition)] == value for condition, value in self.eq)
 
         return g and l and e
 
