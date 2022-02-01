@@ -131,4 +131,8 @@ def test_add_rule(prepared_data):
     hp = anchor.cs.get_hyperparameter(exp.features[2])
     assert hp.lower == prepared_data["X"][exp.features[2]].min()
 
-    
+def test_instance_satisfies_anchor(prepared_data):
+    exp = Explainer(prepared_data["X"])
+    anchor = exp.explain_bottom_up(prepared_data["instance"], prepared_data["model"])
+    print(prepared_data["instance"])
+    assert anchor.is_satisfied(prepared_data["instance"])

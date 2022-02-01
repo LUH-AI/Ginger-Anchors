@@ -52,7 +52,7 @@ class Explainer:
         :rtype: TabularAnchor
         """        
         # initialise empty Anchor
-        self.logger.debug("Start bottom-up search for {instance}.")
+        self.logger.debug(f"Start bottom-up search for {instance}.")
         anchor = TabularAnchor(self.cs, self.features)
         # get quantiles of instance
         rules = generate_rules_for_instance(self.quantiles, instance, self.feature2index)
@@ -65,7 +65,7 @@ class Explainer:
                 exit("No anchors found, ¯\\_(ツ)_/¯")
             # treat anchors as Mulit-Armed Bandidates
             anchor = get_best_candidate(candidates, instance, model, tau)
-            self.logger.info(f"Current best: P={anchor.mean}, Rules: {anchor.rules}")
+            self.logger.info(f"Current best: P={anchor.mean} (based on {anchor.n_samples} samples), Rules: {anchor.rules}")
             if anchor.mean >= tau:
                 break
         
@@ -75,13 +75,26 @@ class Explainer:
         return anchor
 
     def explain_beam_search(self, instance, model, tau=0.95):
+        """
+        Finds in anchor that explains the given instance w.r.t the model by using beam search.
+        In each iteration, beam search keeps a set of good candidates.
+
+        :param instance: instance to be explained
+        :type instance: np.ndarray
+        :param model: the model that is estimated by the anchor
+        :type model: model
+        :param tau: desired level of precision, defaults to 0.95
+        :type tau: float, optional
+        :return: anchor
+        :rtype: TabularAnchor
+        """        
         B = 3
         self.logger.debug("Start bottom-up search for {instance}.")
         # Init B anchors
         current_anchors = [TabularAnchor(self.cs, self.features)] * B
         best_anchor = current_anchors[0]
         rules = generate_rules_for_instance(self.quantiles, instance, self.feature2index)
-        self.logger.debug(f"Generated rules: {rules}")
+        self.logger.debug("Generated rules:", "\n".join(rules))
         random.shuffle(rules)
 
         while True:
@@ -96,7 +109,6 @@ class Explainer:
                 cov = a.compute_coverage(self.X)
                 if cov > best_anchor.coverage:
                     best_anchor = a
-                
 
         return best_anchor
 
