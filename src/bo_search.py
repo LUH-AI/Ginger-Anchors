@@ -9,8 +9,8 @@ def evaluate_rules_from_cs(configuration, model, X, features, explain, iteration
     and estimates the precision.
 
 
-    :param configuration: configuration whose hyperparameters are used to generate rules
-    :type configuration: CS.ConfigurationSpace
+    :param configuration: Configuration that contains upper and lower bounds for each features
+    :type configuration: CS.configuration_space.Configuration
     :param model: The model to be estimated by the anchor
     :type model: model
     :param X: Dataset
@@ -43,7 +43,7 @@ def create_configspace_from_configuration(configuration, features):
     """Creates a configspace from the given bounds of the configuration.
 
     :param configuration: Configuration that contains upper and lower bounds for each features
-    :type configuration: cs.configuration_space.Configuration
+    :type configuration: CS.configuration_space.Configuration
     :param features: list of all features in the dataset
     :type features: list
     :return: ConfigSpace with new bounds
