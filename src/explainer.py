@@ -1,11 +1,12 @@
 from copy import deepcopy
-import enum
-from pyexpat import features
+import os
+
 import ConfigSpace as CS
 import ConfigSpace.hyperparameters as CSH
 import pandas as pd
 import numpy as np
 import random
+
 from smac.scenario.scenario import Scenario
 from smac.facade.smac_hpo_facade import SMAC4HPO
 from functools import partial
@@ -15,7 +16,6 @@ from lucb import get_best_candidate, get_b_best_candidates
 from utils import new_logger
 from bo_search import evaluate_rules_from_cs
 
-# TODO: Categorical hyperparameters in quantiles, rule generation (check for hp type, == if categorical),
 
 class Explainer:
 
@@ -122,25 +122,47 @@ class Explainer:
         return best_anchor
 
     def explain_bayesian_optimiziation(self, instance, model, tau=0.95, evaluations=100, samples_per_iteration=100, seed=42):
-        # alternative idea, let smac sample from all quantile generated rules with categrocial hpms
-        # Target: Find anchor with max precision and max coverage
+        """Find rules via Bayesion Optimization.
+        Each feature in the dataset gets a lower and upper bound hyperparameter.
+        Then, SMAC samples bounds aka rules that are evaluated w.r.t precision and coverage.
+
+        :param instance: instance to be explained
+        :type instance: np.ndarray
+        :param model: the model that is estimated by the anchor
+        :type model: model
+        :param tau: desired level of precision, defaults to 0.95
+        :type tau: float, optional
+        :param evaluations: number of sample evaluations for smac, defaults to 100
+        :type evaluations: int, optional
+        :param samples_per_iteration: number of samples for anchor evaluation, defaults to 100
+        :type samples_per_iteration: int, optional
+        :param seed: random seed for smac, defaults to 42
+        :type seed: int, optional
+        :return: anchor
+        :rtype: TabularAnchor
+        """        
         if len(instance.shape) == 2:
             inst = instance.squeeze(0)
         smac_cs = CS.ConfigurationSpace()
         for f in self.features:
             hp = self.cs.get_hyperparameter(f)
-            # TODO: Quantization factor
-            low_hp =  hp.__class__(f + "_lower", lower=hp.lower, upper=inst[self.features.index(f)], log=False)
-            up_hp = hp.__class__(f + "_upper", lower=inst[self.features.index(f)], upper=hp.upper, log=False)
+
+            low_hp =  hp.__class__(f + "_lower", lower=hp.lower, upper=inst[self.features.index(f)], q=0.0001, log=False)
+            up_hp = hp.__class__(f + "_upper", lower=inst[self.features.index(f)], upper=hp.upper, q=0.0001, log=False)
             smac_cs.add_hyperparameter(low_hp)
             smac_cs.add_hyperparameter(up_hp)
+        self.logger.debug(f"Configspace for SMAC: {smac_cs}")
 
+        output_dir = "./smac_run"
         scenario = Scenario({
             "run_obj" : "quality",
             "runcount-limit" : evaluations,
-            "cs" : smac_cs
+            "cs" : smac_cs,
+            "output_dir" : output_dir,
         })
-        print("instance", instance)
+        self.logger.info(f"Running smac for {evaluations} evaluations, write to {output_dir}")
+
+        # pass all arguments except configuration which is done by smac
         tae_func = partial(
             evaluate_rules_from_cs,
             model=model,
@@ -155,13 +177,37 @@ class Explainer:
             rng=np.random.RandomState(seed),
             tae_runner=tae_func,
         )
-        incumbent = optimizer.optimize()
+        _ = optimizer.optimize()
 
-        print(smac_cs)
-        # ub and lb hyperparam per feature -> sample 
-        #  -> construct from explainer configspace
-        # somehow try different number of rules
-        pass
+        # gather all configurations that were good enough
+        run_dirs = sorted(os.listdir(output_dir), key=lambda x : len(x))
+        newest_run_dir = run_dirs[0]
+        runs = pd.read_json(f"{output_dir}/{newest_run_dir}/traj.json", lines=True)
+
+        runs = runs[runs["cost"] < 1 - tau]
+        self.logger.info(f"Found {len(runs)} incumbents matching {tau=}.")
+        if len(runs) == 0:
+            return None
+
+        anchor_candidates = []
+        for _, run in runs.iterrows():
+            a = generate_anchor_from_configuration(self.cs, run["incumbent"], self.features)
+            anchor_candidates.append(a)
+
+        # sample for precision estimate
+        y = model.predict(instance)
+        for anchor in anchor_candidates:
+            for _ in range(300):
+                a_x = anchor.sample_instance()
+                a_y = model.predict(a_x)
+                anchor.n_samples += 1
+                if a_y == y:
+                    anchor.correct += 1
+            anchor.compute_coverage(self.X)
+        
+        # return best coverage
+        anchor_candidates = sorted(anchor_candidates, key=lambda a : a.coverage)
+        return anchor_candidates[-1]
 
     def generate_candidates(self, anchor, rules, min_cov=0):
         """Generates new anchor candidates by adding different rules to copies of the same anchor.
@@ -258,6 +304,22 @@ def generate_rules_for_instance(quantiles, instance, feature2index):
 
     return rules
 
+def generate_anchor_from_configuration(cs, configuration, features):
+    """Construct an anchor object according to the bounds of the configuration.
 
-
-
+    :param cs: ConfigSpace containing the range of the whole dataset
+    :type cs: CS.ConfigurationSpace
+    :param configuration: Configuration that contains upper and lower bounds for each features
+    :type configuration: cs.configuration_space.Configuration
+    :param features: names of all features
+    :type features: list
+    :return: anchor
+    :rtype: TabularAnchor
+    """    
+    anchor = TabularAnchor(cs, features)
+    for f in features:
+        lower_bound = configuration.get(f + "_lower")
+        upper_bound = configuration.get(f + "_upper")
+        rule = f, "<=", upper_bound, ">=", lower_bound
+        anchor.add_rule(rule)
+    return anchor

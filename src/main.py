@@ -44,6 +44,10 @@ if "__main__" == __name__:
     # print("Coverage:", anchor.coverage)
     # print("Sampled:", anchor.n_samples)
     # print("Rules", anchor.rules)
-    anchor = exp.explain_bayesian_optimiziation(instance, model)
+    anchor = exp.explain_bayesian_optimiziation(instance, model, evaluations=16, samples_per_iteration=500, tau=0.5)
+    print("Precision:", anchor.mean)
+    print("Coverage:", anchor.coverage)
+    print("Sampled:", anchor.n_samples)
+    print("Rules", anchor.rules)
 
     

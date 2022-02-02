@@ -5,16 +5,55 @@ import numpy as np
 from custom_anchor import TabularAnchor
 
 def evaluate_rules_from_cs(configuration, model, X, features, explain, iterations):
+    """Creates an anchor from the rules generated from the configuration
+    and estimates the precision.
+
+
+    :param configuration: configuration whose hyperparameters are used to generate rules
+    :type configuration: CS.ConfigurationSpace
+    :param model: The model to be estimated by the anchor
+    :type model: model
+    :param X: Dataset
+    :type X: pd.Dataframe
+    :param features: all features of the dataset
+    :type features: list
+    :param explain: Instance to be explained
+    :type explain: np.ndarray
+    :param iterations: number of samples to calculate precision
+    :type iterations: int
+    :return: 1 - precision
+    :rtype: float
+    """    
     y = model.predict(explain)
-    # TODO: construct configspace from configuration
-    cs = CS.ConfigurationSpace()
+
+    cs = create_configspace_from_configuration(configuration, features)
     anchor = TabularAnchor(cs, features)
     anchor.compute_coverage(X)
 
-    for i in iterations:
+    for _ in range(iterations):
         a_x = anchor.sample_instance()
         a_y = model.predict(a_x)
         anchor.n_samples += 1
         if a_y == y:
             anchor.correct += 1
-    return 1 - (anchor.mean + anchor.coverage)
+    # minimize 1-precision
+    return 1 - anchor.mean
+
+def create_configspace_from_configuration(configuration, features):
+    """Creates a configspace from the given bounds of the configuration.
+
+    :param configuration: Configuration that contains upper and lower bounds for each features
+    :type configuration: cs.configuration_space.Configuration
+    :param features: list of all features in the dataset
+    :type features: list
+    :return: ConfigSpace with new bounds
+    :rtype: CS.ConfigurationSpace
+    """    
+    #TODO: pass featuretypes
+    cs = CS.ConfigurationSpace()
+    for f in features:
+        lower_bound = configuration.get(f + "_lower")
+        upper_bound = configuration.get(f + "_upper")
+        f_hp = CSH.UniformFloatHyperparameter(f, lower=lower_bound, upper=upper_bound, log=False)
+        cs.add_hyperparameter(f_hp)
+    return cs
