@@ -143,3 +143,10 @@ def test_instance_satisfies_anchor_beam(prepared_data):
     assert anchor.mean > 0.95
     assert len(anchor.rules) > 1
 
+
+def test_instance_satisfies_bayesian_optimization(prepared_data):
+    exp = Explainer(prepared_data["X"])
+    anchor = exp.explain_bayesian_optimiziation(prepared_data["instance"], prepared_data["model"], evaluations=30, tau=0.7)
+    assert anchor.is_satisfied(prepared_data["instance"])
+    assert anchor.mean > 0.7
+    assert len(anchor.rules) > 1
