@@ -1,5 +1,6 @@
 from copy import deepcopy
 import os
+from shutil import rmtree
 
 import ConfigSpace as CS
 import ConfigSpace.hyperparameters as CSH
@@ -121,7 +122,7 @@ class Explainer:
         self.logger.info(f"Found anchor: P={best_anchor.mean}, C={best_anchor.coverage}, Rules:{best_anchor.rules}")
         return best_anchor
 
-    def explain_bayesian_optimiziation(self, instance, model, tau=0.95, evaluations=100, samples_per_iteration=100, seed=42):
+    def explain_bayesian_optimiziation(self, instance, model, tau=0.95, evaluations=100, samples_per_iteration=100, seed=42, keep_trajectory=False):
         """Find rules via Bayesion Optimization.
         Each feature in the dataset gets a lower and upper bound hyperparameter.
         Then, SMAC samples bounds aka rules that are evaluated w.r.t precision and coverage.
@@ -138,23 +139,31 @@ class Explainer:
         :type samples_per_iteration: int, optional
         :param seed: random seed for smac, defaults to 42
         :type seed: int, optional
+        :param keep_trajectory: Whether to delete the smac log or not, defaults to False
+        :type keep_trajectory: boolean, optional
         :return: anchor
         :rtype: TabularAnchor
         """        
         if len(instance.shape) == 2:
             inst = instance.squeeze(0)
         smac_cs = CS.ConfigurationSpace()
+        # TODO: create CategoricalHyperparameter for each feature with choices=[0, 1, 2, 3]
+        # create in condition for using no bounds, just lower, just upper and both
         for f in self.features:
             hp = self.cs.get_hyperparameter(f)
 
             low_hp =  hp.__class__(f + "_lower", lower=hp.lower, upper=inst[self.features.index(f)], q=0.0001, log=False)
             up_hp = hp.__class__(f + "_upper", lower=inst[self.features.index(f)], upper=hp.upper, q=0.0001, log=False)
-            cat_hp = CSH.CategoricalHyperparameter(f + "_cat", choices=[0, 1])
-            cat_cond = CS.EqualsCondition([low_hp, up_hp], cat_hp, 1)
-
             smac_cs.add_hyperparameter(low_hp)
             smac_cs.add_hyperparameter(up_hp)
-            smac_cs.add_condition(cat_cond)
+
+            # add mask for 
+            cat_hp = CSH.CategoricalHyperparameter(f + "_cat", choices=[0, 1])
+            smac_cs.add_hyperparameter(cat_hp)
+            cat_lower = CS.EqualsCondition(low_hp, cat_hp, 1)
+            cat_upper = CS.EqualsCondition(up_hp, cat_hp, 1)
+            smac_cs.add_condition(cat_lower)
+            smac_cs.add_condition(cat_upper)
         self.logger.debug(f"Configspace for SMAC: {smac_cs}")
 
         output_dir = "./smac_run"
@@ -208,6 +217,10 @@ class Explainer:
                 if a_y == y:
                     anchor.correct += 1
             anchor.compute_coverage(self.X)
+        
+        if not keep_trajectory:
+            self.logger.debug("Removing smac folder content")
+            rmtree(f"{output_dir}/{newest_run_dir}")
         
         # return best coverage
         anchor_candidates = sorted(anchor_candidates, key=lambda a : a.coverage)
@@ -324,6 +337,13 @@ def generate_anchor_from_configuration(cs, configuration, features):
     for f in features:
         lower_bound = configuration.get(f + "_lower")
         upper_bound = configuration.get(f + "_upper")
-        rule = f, "<=", upper_bound, ">=", lower_bound
+        if not upper_bound and not lower_bound:
+            continue
+        elif not lower_bound and upper_bound:
+            rule = f, "<=", upper_bound
+        elif lower_bound and not upper_bound:
+            rule = f, ">=", lower_bound
+        else:
+            rule = f, "<=", upper_bound, ">=", lower_bound
         anchor.add_rule(rule)
     return anchor
