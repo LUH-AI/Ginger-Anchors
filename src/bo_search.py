@@ -26,7 +26,7 @@ def evaluate_rules_from_cs(configuration, model, X, features, explain, iteration
     """    
     y = model.predict(explain)
 
-    cs = create_configspace_from_configuration(configuration, features)
+    cs = create_configspace_from_configuration(configuration, features, X)
     anchor = TabularAnchor(cs, features)
     anchor.compute_coverage(X)
 
@@ -39,7 +39,7 @@ def evaluate_rules_from_cs(configuration, model, X, features, explain, iteration
     # minimize 1-precision
     return 1 - anchor.mean
 
-def create_configspace_from_configuration(configuration, features):
+def create_configspace_from_configuration(configuration, features, X):
     """Creates a configspace from the given bounds of the configuration.
 
     :param configuration: Configuration that contains upper and lower bounds for each features
@@ -52,8 +52,13 @@ def create_configspace_from_configuration(configuration, features):
     #TODO: pass featuretypes
     cs = CS.ConfigurationSpace()
     for f in features:
-        lower_bound = configuration.get(f + "_lower")
-        upper_bound = configuration.get(f + "_upper")
+        cat = configuration.get(f + "_cat")
+        if(cat == 0):
+            lower_bound = X[f].min()
+            upper_bound = X[f].max()
+        else:
+            lower_bound = configuration.get(f + "_lower")
+            upper_bound = configuration.get(f + "_upper")
         f_hp = CSH.UniformFloatHyperparameter(f, lower=lower_bound, upper=upper_bound, log=False)
         cs.add_hyperparameter(f_hp)
     return cs

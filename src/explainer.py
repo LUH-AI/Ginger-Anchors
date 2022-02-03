@@ -149,8 +149,12 @@ class Explainer:
 
             low_hp =  hp.__class__(f + "_lower", lower=hp.lower, upper=inst[self.features.index(f)], q=0.0001, log=False)
             up_hp = hp.__class__(f + "_upper", lower=inst[self.features.index(f)], upper=hp.upper, q=0.0001, log=False)
+            cat_hp = CSH.CategoricalHyperparameter(f + "_cat", choices=[0, 1])
+            cat_cond = CS.EqualsCondition([low_hp, up_hp], cat_hp, 1)
+
             smac_cs.add_hyperparameter(low_hp)
             smac_cs.add_hyperparameter(up_hp)
+            smac_cs.add_condition(cat_cond)
         self.logger.debug(f"Configspace for SMAC: {smac_cs}")
 
         output_dir = "./smac_run"
