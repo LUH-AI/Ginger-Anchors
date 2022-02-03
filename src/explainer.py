@@ -1,6 +1,7 @@
 from copy import deepcopy
 import os
 from shutil import rmtree
+import time
 
 import ConfigSpace as CS
 import ConfigSpace.hyperparameters as CSH
@@ -41,7 +42,7 @@ class Explainer:
         self.cs = get_configspace_for_dataset(X)
         
 
-    def explain_bottom_up(self, instance, model, tau=0.95):
+    def explain_bottom_up(self, instance, model, tau=0.95, delta=0.1, epsilon=0.2):
         """Bottom-up Construction of Anchors introduced in M. Ribeiro "Anchors: High-Precision Model-Agnostic Explanations".
         Rules of the Anchor are greedily generated.
 
@@ -67,7 +68,7 @@ class Explainer:
             if candidates == []:
                 exit("No anchors found, ¯\\_(ツ)_/¯")
             # treat anchors as Mulit-Armed Bandidates
-            anchor = get_best_candidate(candidates, instance, model, tau)
+            anchor = get_best_candidate(candidates, instance, model, tau, delta, epsilon)
             self.logger.info(f"Current best: P={anchor.mean} (based on {anchor.n_samples} samples), Rules: {anchor.rules}")
             if anchor.mean >= tau:
                 break
@@ -76,7 +77,7 @@ class Explainer:
         self.logger.info(f"Found anchor: P={anchor.mean}, C={anchor.coverage}, Rules:{anchor.rules}")
         return anchor
 
-    def explain_beam_search(self, instance, model, tau=0.95, B=1):
+    def explain_beam_search(self, instance, model, tau=0.95, B=1, delta=0.1, epsilon=0.2, timeout=60):
         """
         Finds in anchor that explains the given instance w.r.t the model by using beam search.
         In each iteration, beam search keeps a set of good candidates.
@@ -98,7 +99,9 @@ class Explainer:
         self.logger.debug(f"Generated rules: {rules}")
         random.shuffle(rules)
         i = 0
-        while True:
+        start = time.time()
+        trajectory = []
+        while time.time() - start < timeout:
             # generate candidates for multiple anchors
             candidates = []
             for a in current_anchors:
@@ -107,11 +110,14 @@ class Explainer:
             if len(candidates) == 0:
                 break
             
-            current_anchors = get_b_best_candidates(candidates, instance, model, tau, B)
+            current_anchors = get_b_best_candidates(candidates, instance, model, tau, B, delta, epsilon)
 
+            level_traj = []
             for a in current_anchors:
+                a.compute_coverage(self.X)
+                level_traj.append((a.mean, a.n_samples, a.coverage))
                 self.logger.info(f"Current best: P={a.mean} (based on {a.n_samples} samples), Rules: {a.rules}")
-
+            trajectory.append(level_traj)
             sufficiently_precise_anchors = [a for a in current_anchors if a.mean > tau]
             for a in sufficiently_precise_anchors:
                 cov = a.compute_coverage(self.X)
@@ -119,7 +125,10 @@ class Explainer:
                     best_anchor = a
                     self.logger.info(f"Current best: P={best_anchor.mean} (based on {best_anchor.n_samples} samples), Rules: {best_anchor.rules}")
 
+        if time.time() - start > timeout:
+            return None
         self.logger.info(f"Found anchor: P={best_anchor.mean}, C={best_anchor.coverage}, Rules:{best_anchor.rules}")
+        best_anchor.trajectory = trajectory
         return best_anchor
 
     def explain_bayesian_optimiziation(self, instance, model, tau=0.95, evaluations=100, samples_per_iteration=100, seed=42, keep_trajectory=False):
