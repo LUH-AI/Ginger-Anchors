@@ -46,6 +46,8 @@ def create_configspace_from_configuration(configuration, features, X):
     :type configuration: CS.configuration_space.Configuration
     :param features: list of all features in the dataset
     :type features: list
+    :param X: Dataset
+    :type X: pd.DataFrame
     :return: ConfigSpace with new bounds
     :rtype: CS.ConfigurationSpace
     """    

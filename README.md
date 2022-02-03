@@ -10,7 +10,7 @@ Implementation and Extensions of [Anchors](https://homes.cs.washington.edu/~marc
   Write simple interfaces and extract the main functions accordingly.
  * [X] Extension (10): Implement Beam Search on top of the Bottom-up Construction.
  * [ ] Analysis (5): Perform an analysis on how 𝐵, 𝛿 and 𝜖 influence the results.
- * [ ] Alternative Optimizer (10): Replace Beam Search/Bottom-up Construction with SMAC
+ * [X] Alternative Optimizer (10): Replace Beam Search/Bottom-up Construction with SMAC
 (Bayesian Optimization)
 
 Additionally:
@@ -32,8 +32,7 @@ Create a conda environment
   conda env create
   conda activate ginger-anchors
   ```
-  
- ...
+  *Note: swig is needed to install smac3. See [installation instructions](https://automl.github.io/SMAC3/master/pages/getting_started/installation.html).*
 
 
 ## Authors
