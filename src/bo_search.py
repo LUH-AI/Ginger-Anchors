@@ -52,13 +52,17 @@ def create_configspace_from_configuration(configuration, features, X):
     #TODO: pass featuretypes
     cs = CS.ConfigurationSpace()
     for f in features:
-        cat = configuration.get(f + "_cat")
-        if(cat == 0):
-            lower_bound = X[f].min()
+        lm = configuration.get(f + "_lower_mask")
+        um = configuration.get(f + "_upper_mask")
+        if um == 1:
             upper_bound = X[f].max()
         else:
-            lower_bound = configuration.get(f + "_lower")
             upper_bound = configuration.get(f + "_upper")
+        if lm == 1:
+            lower_bound = X[f].min()
+        else:
+            lower_bound = configuration.get(f + "_lower")
+            
         f_hp = CSH.UniformFloatHyperparameter(f, lower=lower_bound, upper=upper_bound, log=False)
         cs.add_hyperparameter(f_hp)
     return cs

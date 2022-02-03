@@ -154,16 +154,17 @@ class Explainer:
 
             low_hp =  hp.__class__(f + "_lower", lower=hp.lower, upper=inst[self.features.index(f)], q=0.0001, log=False)
             up_hp = hp.__class__(f + "_upper", lower=inst[self.features.index(f)], upper=hp.upper, q=0.0001, log=False)
-            smac_cs.add_hyperparameter(low_hp)
-            smac_cs.add_hyperparameter(up_hp)
+            smac_cs.add_hyperparameters([low_hp, up_hp])
 
-            # add mask for 
-            cat_hp = CSH.CategoricalHyperparameter(f + "_cat", choices=[0, 1])
-            smac_cs.add_hyperparameter(cat_hp)
-            cat_lower = CS.EqualsCondition(low_hp, cat_hp, 1)
-            cat_upper = CS.EqualsCondition(up_hp, cat_hp, 1)
+            lower_mask = CSH.CategoricalHyperparameter(f + "_lower_mask", choices=[0, 1])
+            upper_mask = CSH.CategoricalHyperparameter(f + "_upper_mask", choices=[0, 1])
+            smac_cs.add_hyperparameters([lower_mask, upper_mask])
+
+            cat_lower = CS.EqualsCondition(low_hp, lower_mask, 0)
+            cat_upper = CS.EqualsCondition(up_hp, upper_mask, 0)
             smac_cs.add_condition(cat_lower)
             smac_cs.add_condition(cat_upper)
+
         self.logger.debug(f"Configspace for SMAC: {smac_cs}")
 
         output_dir = "./smac_run"
