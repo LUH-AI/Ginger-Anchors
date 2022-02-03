@@ -36,7 +36,7 @@ def evaluate_rules_from_cs(configuration, model, X, features, explain, iteration
         anchor.n_samples += 1
         if a_y == y:
             anchor.correct += 1
-    # minimize 1-precision
+    # maximize precision
     return 1 - anchor.mean
 
 def create_configspace_from_configuration(configuration, features, X):
