@@ -70,6 +70,7 @@ def log_run(anchor, elapsed_time, b, d, e, logfile):
 # -> handle timeouts
 #
 # nice to have -> samples, precision and bounds per arm for one run
+# parallel coordinates trajectory
 
 # analysing BO
 
