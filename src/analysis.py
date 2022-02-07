@@ -35,7 +35,7 @@ def log_run(anchor, elapsed_time, b, d, e, logfile):
         prec = 0
         coverage = 0
         rules = []
-        trajectory = []
+        traj = []
         samples = 0
     else:
         prec = anchor.mean
@@ -93,8 +93,8 @@ def run_analysis(B, delta, epsilon, timeout, logfile):
 if "__main__" == __name__:
     now = datetime.now()
     logfile = f"analysis_{now.strftime('%d.%m.%y_%H:%M:%S')}_.jsonl"
-    B = [1, 2, 3, 4, 5]
-    delta = [0.05, 0.1, 0.15, 0.2, 0.25]
+    B = [1, 2, 3, 4, 5, 6, 7]
+    delta = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35]
     # delta bigger -> beta smaller -> bounds less far from mean -> more confident in our sampled precision
-    epsilon = [0.1, 0.15, 0.2, 0.25, 0.3]
-    run_analysis(B, delta, epsilon, 120, logfile)
+    epsilon = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
+    run_analysis(B, delta, epsilon, 180, logfile)

@@ -90,7 +90,9 @@ class Explainer:
         :type tau: float, optional
         :return: anchor
         :rtype: TabularAnchor
-        """        
+        """
+        random.seed(42)
+        np.random.seed(42)      
         self.logger.debug(f"Start bottom-up search for {instance}.")
         # Init B anchors
         current_anchors = [TabularAnchor(self.cs, self.features)]
@@ -277,7 +279,7 @@ def get_configspace_for_dataset(X : pd.DataFrame):
     :return: ConfigSpace
     :rtype: CS.ConfigurationSpace
     """    
-    cs = CS.ConfigurationSpace()
+    cs = CS.ConfigurationSpace(42)
     # https://pandas.pydata.org/pandas-docs/stable/user_guide/basics.html#basics-dtypes
     for f in X.columns:
         if X[f].dtype in ("category", "string", "object", "boolean"):
