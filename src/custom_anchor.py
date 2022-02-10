@@ -5,7 +5,7 @@ from lucb import kullback_leibler
 
 class TabularAnchor:
 
-    def __init__(self, cs : CS.ConfigurationSpace, all_features) -> None:
+    def __init__(self, cs : CS.ConfigurationSpace, all_features, seed=42) -> None:
         """Anchor for explaining an instance of tabular Dataset. 
 
         :param cs: ConfigurationSpace that is used for sampling
@@ -28,6 +28,7 @@ class TabularAnchor:
         
         self.all_features = all_features # all features in correct order
         self.cs = cs
+        self.seed = seed
 
     @property
     def mean(self):
@@ -159,7 +160,7 @@ class TabularAnchor:
         :type rule: tuple
         """        
         # add a new rule and adjust the configspace
-        new_cs = CS.ConfigurationSpace()
+        new_cs = CS.ConfigurationSpace(self.seed)
         self.rules.append(rule)
         if len(rule) == 5:
             f, o1, v1, o2, v2 = rule

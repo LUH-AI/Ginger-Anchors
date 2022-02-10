@@ -27,8 +27,7 @@ def setup():
     model.fit(X_train, y_train)
     preds = model.predict(X_test)
     print("Classifier accuracy:", sum(preds == y_test) / len(y_test))
-    exp = Explainer(X_df)
-    return exp, model, instance, X
+    return model, instance, X_df
 
 def log_run(anchor, elapsed_time, b, d, e, logfile):
     if anchor is None:
@@ -77,12 +76,10 @@ def log_run(anchor, elapsed_time, b, d, e, logfile):
 # number of evaluations -> coverage, precision
 # quantization factor
 
-def run_analysis(B, delta, epsilon, timeout, logfile):
-    exp, model, instance, X = setup()
-    # grid search
+def run_analysis(B, delta, epsilon, exp, model, instance, timeout, logfile, seed):
     for b, d, e in itertools.product(B, delta, epsilon):
         start_time = time.time()
-        anchor = exp.explain_beam_search(instance, model, tau=0.95, B=b, delta=d, epsilon=e, timeout=timeout)
+        anchor = exp.explain_beam_search(instance, model, tau=0.95, B=b, delta=d, epsilon=e, timeout=timeout, seed=seed)
         end_time = time.time()
         if anchor is None:
             elapsed_time = -1
@@ -93,9 +90,15 @@ def run_analysis(B, delta, epsilon, timeout, logfile):
 
 if "__main__" == __name__:
     now = datetime.now()
-    logfile = f"analysis_{now.strftime('%d.%m.%y_%H:%M:%S')}_.jsonl"
-    B = [1, 2, 3, 4, 5, 6, 7]
-    delta = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35]
-    # delta bigger -> beta smaller -> bounds less far from mean -> more confident in our sampled precision
-    epsilon = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
-    run_analysis(B, delta, epsilon, 180, logfile)
+    seeds = [42, 55, 87, 1337]
+    model, instance, X_df = setup()
+    timeout = 200
+    # grid search
+    for seed in seeds:
+        exp = Explainer(X_df, seed)
+        logfile = f"analysis_{now.strftime('%d.%m.%y_%H_%M_%S')}_{seed}.jsonl"
+        B = [1, 2, 3, 4, 5, 6, 7]
+        delta = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35]
+        # delta bigger -> beta smaller -> bounds less far from mean -> more confident in our sampled precision
+        epsilon = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
+        run_analysis(B, delta, epsilon, exp, model, instance, timeout, logfile, seed)

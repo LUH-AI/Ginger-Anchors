@@ -21,7 +21,7 @@ from bo_search import evaluate_rules_from_cs
 
 class Explainer:
 
-    def __init__(self, X : pd.DataFrame) -> None:
+    def __init__(self, X : pd.DataFrame, seed=42) -> None:
         """An explainer object from which explanations
         (aka anchors) for single instances can be computed.
 
@@ -39,7 +39,8 @@ class Explainer:
             self.quantiles[f] = np.quantile(X[f], [0.25, 0.5, 0.75])# np.arange(0,1, 0.05))#
         
         self.feature2index = {f : self.features.index(f) for f in self.features}
-        self.cs = get_configspace_for_dataset(X)
+        self.cs = get_configspace_for_dataset(X, seed)
+        self.seed = seed
         
 
     def explain_bottom_up(self, instance, model, tau=0.95, delta=0.1, epsilon=0.2):
@@ -57,7 +58,7 @@ class Explainer:
         """        
         # initialise empty Anchor
         self.logger.debug(f"Start bottom-up search for {instance}.")
-        anchor = TabularAnchor(self.cs, self.features)
+        anchor = TabularAnchor(self.cs, self.features, self.seed)
         # get quantiles of instance
         rules = generate_rules_for_instance(self.quantiles, instance, self.feature2index)
         self.logger.debug(f"Generated rules: {rules}")
@@ -77,7 +78,7 @@ class Explainer:
         self.logger.info(f"Found anchor: P={anchor.mean}, C={anchor.coverage}, Rules:{anchor.rules}")
         return anchor
 
-    def explain_beam_search(self, instance, model, tau=0.95, B=1, delta=0.1, epsilon=0.2, timeout=60):
+    def explain_beam_search(self, instance, model, tau=0.95, B=1, delta=0.1, epsilon=0.2, timeout=60, seed=42):
         """
         Finds in anchor that explains the given instance w.r.t the model by using beam search.
         In each iteration, beam search keeps a set of good candidates.
@@ -91,8 +92,8 @@ class Explainer:
         :return: anchor
         :rtype: TabularAnchor
         """
-        random.seed(42)
-        np.random.seed(42)      
+        random.seed(seed)
+        np.random.seed(seed)      
         self.logger.debug(f"Start bottom-up search for {instance}.")
         # Init B anchors
         current_anchors = [TabularAnchor(self.cs, self.features)]
@@ -269,7 +270,7 @@ class Explainer:
 
         return new_anchors
 
-def get_configspace_for_dataset(X : pd.DataFrame):
+def get_configspace_for_dataset(X : pd.DataFrame, seed=42):
     """Creates a ConfigSpace for the given dataset.
     The hyperparameters bounds are taken from
     the respective minimum and maximum values of the features.
@@ -279,7 +280,7 @@ def get_configspace_for_dataset(X : pd.DataFrame):
     :return: ConfigSpace
     :rtype: CS.ConfigurationSpace
     """    
-    cs = CS.ConfigurationSpace(42)
+    cs = CS.ConfigurationSpace(seed)
     # https://pandas.pydata.org/pandas-docs/stable/user_guide/basics.html#basics-dtypes
     for f in X.columns:
         if X[f].dtype in ("category", "string", "object", "boolean"):
