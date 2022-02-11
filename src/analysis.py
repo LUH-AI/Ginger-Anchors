@@ -18,7 +18,7 @@ def setup():
     X_df = data.drop(columns=["Type"])
     X = data.drop(columns=["Type"]).to_numpy()
     y = data["Type"].to_numpy()
-    instance = X[3].reshape(1, -1)
+    instance = X[155].reshape(1, -1)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
     # prepare model
@@ -27,7 +27,7 @@ def setup():
     model.fit(X_train, y_train)
     preds = model.predict(X_test)
     print("Classifier accuracy:", sum(preds == y_test) / len(y_test))
-    return model, instance, X_df
+    return model, X, X_df
 
 def log_run(anchor, elapsed_time, b, d, e, logfile):
     if anchor is None:
@@ -91,14 +91,17 @@ def run_analysis(B, delta, epsilon, exp, model, instance, timeout, logfile, seed
 if "__main__" == __name__:
     now = datetime.now()
     seeds = [42, 55, 87, 1337]
-    model, instance, X_df = setup()
+    instances = [3, 111, 155]
+    model, X, X_df = setup()
     timeout = 200
     # grid search
-    for seed in seeds:
-        exp = Explainer(X_df, seed)
-        logfile = f"analysis_{now.strftime('%d.%m.%y_%H_%M_%S')}_{seed}.jsonl"
-        B = [1, 2, 3, 4, 5, 6, 7]
-        delta = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35]
-        # delta bigger -> beta smaller -> bounds less far from mean -> more confident in our sampled precision
-        epsilon = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
-        run_analysis(B, delta, epsilon, exp, model, instance, timeout, logfile, seed)
+    for instance_idx in instances:
+        instance = X[instance_idx].reshape(1, -1)
+        for seed in seeds:
+            exp = Explainer(X_df, seed)
+            logfile = f"final_analysis_{now.strftime('%d.%m.%y_%H_%M_%S')}_{seed}_{instance_idx}.jsonl"
+            B = [1, 2, 3, 4, 5, 6, 7]
+            delta = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35]
+            # delta bigger -> beta smaller -> bounds less far from mean -> more confident in our sampled precision
+            epsilon = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
+            run_analysis(B, delta, epsilon, exp, model, instance, timeout, logfile, seed)
