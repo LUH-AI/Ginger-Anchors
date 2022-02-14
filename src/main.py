@@ -11,10 +11,12 @@ if "__main__" == __name__:
     # y = pd.read_csv("data/german_labels.csv")
     # X_df = data
     # X = data
+    i_idx = 111
     X_df = data.drop(columns=["Type"])
     X = data.drop(columns=["Type"]).to_numpy()
     y = data["Type"].to_numpy()
-    instance = X[3].reshape(1, -1)
+    instance = X[i_idx].reshape(1, -1)
+    print(y[155])
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
     
     # prepare model
@@ -44,10 +46,10 @@ if "__main__" == __name__:
     # print("Coverage:", anchor.coverage)
     # print("Sampled:", anchor.n_samples)
     # print("Rules", anchor.rules)
-    anchor = exp.explain_bayesian_optimiziation(instance, model, evaluations=128, samples_per_iteration=500, tau=0.8)
-    print("Precision:", anchor.mean)
-    print("Coverage:", anchor.coverage)
-    print("Sampled:", anchor.n_samples)
-    print("Rules", anchor.rules)
+    # anchor = exp.explain_bayesian_optimiziation(instance, model, evaluations=128, samples_per_iteration=500, tau=0.8)
+    # print("Precision:", anchor.mean)
+    # print("Coverage:", anchor.coverage)
+    # print("Sampled:", anchor.n_samples)
+    # print("Rules", anchor.rules)
 
     
