@@ -15,9 +15,9 @@ class TabularAnchor:
         :param cs: ConfigurationSpace that is used for sampling
         :type cs: CS.ConfigurationSpace
         :param seed: seed for configspace
-        :type seed: int
+        :type seed: int, optional
         :param cls: ground truth of instance to explain
-        :type cls: int
+        :type cls: int, optional
         """        
         self.ub = None # upper bound
         self.ubs = []
@@ -82,8 +82,6 @@ class TabularAnchor:
         um = min(um, 1)
         qm = (um + lm) / 2
         kl = kullback_leibler(p, qm)
-        # print(f"{beta=}")
-        # print(f"ub {self.n_samples=}, {level=}, lm or {p=}, {um=}, {qm=}, {kl=}")
         if kl > level:
             self.ub = qm
         else:
@@ -104,8 +102,6 @@ class TabularAnchor:
         um = max(min(um, 1), 0)
         qm = (um + lm) / 2
         kl = kullback_leibler(p, qm)
-        # print(f"{beta=}")
-        # print(f"lb {self.n_samples=}, {level=}, lm or {p=}, {um=}, {qm=}, {kl=}")
         if kl > level:
             self.lb = qm
         else:

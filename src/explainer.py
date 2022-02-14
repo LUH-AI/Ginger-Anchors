@@ -36,7 +36,7 @@ class Explainer:
         for f in self.features:
             # More quantiles might lead to less predicates per anchor but 
             # leads to tighter rules (worse coverage)
-            self.quantiles[f] = np.quantile(X[f], [0.25, 0.5, 0.75])# np.arange(0,1, 0.05))#
+            self.quantiles[f] = np.quantile(X[f], [0.25, 0.5, 0.75])
         
         self.feature2index = {f : self.features.index(f) for f in self.features}
         self.cs = get_configspace_for_dataset(X, seed)
@@ -67,16 +67,17 @@ class Explainer:
         while True:
             # add unused rules to current anchor
             candidates = self.generate_candidates(anchor, rules)
+            # no candidates found
             if candidates == []:
-                exit("No anchors found, ¯\\_(ツ)_/¯")
+                return None
             # treat anchors as Mulit-Armed Bandidates
             anchor = get_best_candidate(candidates, instance, model, tau, delta, epsilon)
-            self.logger.info(f"Current best: P={anchor.mean} (based on {anchor.n_samples} samples), Rules: {anchor.rules}")
+            self.logger.debug(f"Current best: P={anchor.mean} (based on {anchor.n_samples} samples), Rules: {anchor.rules}")
             if anchor.mean >= tau:
                 break
         
         anchor.compute_coverage(self.X)
-        self.logger.info(f"Found anchor: P={anchor.mean}, C={anchor.coverage}, Rules:{anchor.rules}")
+        self.logger.debug(f"Found anchor: P={anchor.mean}, C={anchor.coverage}, Rules:{anchor.rules}")
         return anchor
 
     def explain_beam_search(self, instance, model, tau=0.95, B=1, delta=0.1, epsilon=0.2, timeout=60, seed=42):
@@ -90,6 +91,16 @@ class Explainer:
         :type model: model
         :param tau: desired level of precision, defaults to 0.95
         :type tau: float, optional
+        :param B: B candidates to hold
+        :type B: int, optional
+        :param delta: Hyperparameter, higher leads to less exploration, in [0,1], defaults to 0.1
+        :type delta: float, optional
+        :param epsilon: Break condition, desired difference of ub and lb, defaults to 0.2
+        :type epsilon: float, optional
+        :param timeout: Maximum compute time in seconds, defaults to 60
+        :type timeout: int, optional
+        :param seed: Random seed, defaults to 42
+        :type seed: int, optional
         :return: anchor
         :rtype: TabularAnchor
         """
@@ -103,7 +114,7 @@ class Explainer:
         rules = generate_rules_for_instance(self.quantiles, instance, self.feature2index)
         self.logger.debug(f"Generated rules: {rules}")
         random.shuffle(rules)
-        i = 0
+
         start = time.time()
         trajectory = []
         while time.time() - start < timeout:
@@ -121,18 +132,19 @@ class Explainer:
             for a in current_anchors:
                 a.compute_coverage(self.X)
                 level_traj.append((a.mean, a.n_samples, a.coverage))
-                self.logger.info(f"Current best: P={a.mean} (based on {a.n_samples} samples), Rules: {a.rules}")
+                self.logger.debug(f"Current best: P={a.mean} (based on {a.n_samples} samples), Rules: {a.rules}")
             trajectory.append(level_traj)
             sufficiently_precise_anchors = [a for a in current_anchors if a.mean > tau]
             for a in sufficiently_precise_anchors:
                 cov = a.compute_coverage(self.X)
                 if cov > best_anchor.coverage:
                     best_anchor = a
-                    self.logger.info(f"Current best: P={best_anchor.mean} (based on {best_anchor.n_samples} samples), Rules: {best_anchor.rules}")
+                    self.logger.debug(f"Current best: P={best_anchor.mean} (based on {best_anchor.n_samples} samples), Rules: {best_anchor.rules}")
 
         if time.time() - start > timeout:
             return None
-        self.logger.info(f"Found anchor: P={best_anchor.mean}, C={best_anchor.coverage}, Rules:{best_anchor.rules}")
+            
+        self.logger.debug(f"Found anchor: P={best_anchor.mean}, C={best_anchor.coverage}, Rules:{best_anchor.rules}")
         best_anchor.trajectory = trajectory
         return best_anchor
 
@@ -212,7 +224,7 @@ class Explainer:
         runs = pd.read_json(f"{output_dir}/{newest_run_dir}/traj.json", lines=True)
 
         runs = runs[runs["cost"] < 1 - tau]
-        self.logger.info(f"Found {len(runs)} incumbents matching {tau=}.")
+        self.logger.debug(f"Found {len(runs)} incumbents matching {tau=}.")
         if len(runs) == 0:
             return None
 
@@ -253,6 +265,8 @@ class Explainer:
         :type anchor: TabularAnchor
         :param rules: New rules not yet in anchor
         :type rules: list
+        :param min_cov: Minimum coverage for new candidates
+        :type min_cov: float
         :return: New anchor candidates
         :rtype: list
         """    
@@ -280,6 +294,8 @@ def get_configspace_for_dataset(X : pd.DataFrame, seed=42):
 
     :param X: Dataset for which to create the configspace
     :type X: pd.DataFrame
+    :param seed: random seed for the configspace, defaults to 42
+    :type seed: int, optional
     :return: ConfigSpace
     :rtype: CS.ConfigurationSpace
     """    
