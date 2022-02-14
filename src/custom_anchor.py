@@ -157,7 +157,7 @@ class TabularAnchor:
         return g and l and e
 
     def add_rule(self, rule):
-        """Parses rule tuple and updates current rules and configspace.
+        """Parses rule tuples and updates current rules and configspace.
 
         :param rule: Rule regarding one feature
         :type rule: tuple

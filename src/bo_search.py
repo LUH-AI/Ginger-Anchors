@@ -52,7 +52,6 @@ def create_configspace_from_configuration(configuration, features, X):
     :return: ConfigSpace with new bounds
     :rtype: CS.ConfigurationSpace
     """    
-    #TODO: pass featuretypes
     cs = CS.ConfigurationSpace()
     for f in features:
         lm = configuration.get(f + "_lower_mask")
