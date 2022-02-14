@@ -8,17 +8,18 @@ from sklearn.model_selection import train_test_split
 import pandas as pd
 from explainer import Explainer
 
-# prepare data
 def setup():
+    """
+    Load data and train model.
+
+    :return: model, dataset as array and dataset as DataFrame
+    :rtype: (RandomForestClassifier, np.ndarray, pd.DataFrame)
+    """    
     print("Preparing data...")
     data = pd.read_csv("data/wheat_seeds.csv")
-    # y = pd.read_csv("data/german_labels.csv")
-    # X_df = data
-    # X = data
     X_df = data.drop(columns=["Type"])
     X = data.drop(columns=["Type"]).to_numpy()
     y = data["Type"].to_numpy()
-    instance = X[155].reshape(1, -1)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
     # prepare model
@@ -26,10 +27,26 @@ def setup():
     model = RandomForestClassifier(n_estimators=10)
     model.fit(X_train, y_train)
     preds = model.predict(X_test)
+
     print("Classifier accuracy:", sum(preds == y_test) / len(y_test))
     return model, X, X_df
 
 def log_run(anchor, elapsed_time, b, d, e, logfile):
+    """ Saves the results of the analysis to a logfile.
+    
+    :param anchor: found Anchor
+    :type anchor: TabularAnchor
+    :param elapsed_time: elapsed time for the explanation
+    :type elapsed_time: float
+    :param b: Beamsearch width
+    :type b: int
+    :param d: delta
+    :type d: float
+    :param e: epsilon
+    :type e: float
+    :param logfile: Filename where logs are written to
+    :type logfile: str
+    """    
     if anchor is None:
         prec = 0
         coverage = 0
@@ -60,23 +77,28 @@ def log_run(anchor, elapsed_time, b, d, e, logfile):
         f.write(run_str + "\n")
     return
 
-
-# for different 𝐵, 𝛿 and 𝜖 collect:
-#   - runtime + n_samples
-#   - precision
-#   - coverage   
-#   - bounds
-# -> handle timeouts
-#
-# nice to have -> samples, precision and bounds per arm for one run
-# parallel coordinates trajectory
-
-# analysing BO
-
-# number of evaluations -> coverage, precision
-# quantization factor
-
 def run_analysis(B, delta, epsilon, exp, model, instance, timeout, logfile, seed):
+    """Run grid search based on given parameter ranges. Writes results into logfile.
+
+    :param B: Range of B candidates
+    :type B: list
+    :param delta: Range of deltas
+    :type delta: list
+    :param epsilon: Range of epsilons
+    :type epsilon: list
+    :param exp: Explainer object
+    :type exp: Explainer
+    :param model: Model to explain
+    :type model: RandomForestClassifier
+    :param instance: Instance to explain
+    :type instance: np.ndarray
+    :param timeout: Maximum compute time per configuration in seconds
+    :type timeout: int
+    :param logfile: Filename where logs are written to
+    :type logfile: str
+    :param seed: Random seed.
+    :type seed: int
+    """    
     for b, d, e in itertools.product(B, delta, epsilon):
         start_time = time.time()
         anchor = exp.explain_beam_search(instance, model, tau=0.95, B=b, delta=d, epsilon=e, timeout=timeout, seed=seed)
