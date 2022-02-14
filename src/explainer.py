@@ -71,7 +71,7 @@ class Explainer:
             if candidates == []:
                 return None
             # treat anchors as Mulit-Armed Bandidates
-            anchor = get_best_candidate(candidates, instance, model, tau, delta, epsilon)
+            anchor = get_best_candidate(candidates, instance, model, delta, epsilon)
             self.logger.debug(f"Current best: P={anchor.mean} (based on {anchor.n_samples} samples), Rules: {anchor.rules}")
             if anchor.mean >= tau:
                 break
@@ -126,7 +126,7 @@ class Explainer:
             if len(candidates) == 0:
                 break
             
-            current_anchors = get_b_best_candidates(candidates, instance, model, tau, B, delta, epsilon)
+            current_anchors = get_b_best_candidates(candidates, instance, model, B, delta, epsilon)
 
             level_traj = []
             for a in current_anchors:

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # consider init function to take args
-default_level = logging.DEBUG
+default_level = logging.INFO
 logging.basicConfig(format='%(asctime)s::%(name)s::%(levelname)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 
 def new_logger(name, level=default_level):
