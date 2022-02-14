@@ -7,7 +7,7 @@ EPS = 0.20
 DELTA = 0.1
 INIT_SAMPLES = 10
 
-def get_b_best_candidates(anchors, instance, model, tau, B):
+def get_b_best_candidates(anchors, instance, model, tau, B, delta, eps):
     """
     Determine the best b anchors by precision. Poses anchor selection as a multi-armed bandit problem.
     Implements the LUCB algorithm (see https://proceedings.mlr.press/v30/Kaufmann13.pdf) in an explore-m setting.
@@ -25,7 +25,7 @@ def get_b_best_candidates(anchors, instance, model, tau, B):
     """    
     t = 1
     y = model.predict(instance)
-    beta = compute_beta(t, len(anchors))
+    beta = compute_beta(t, len(anchors), delta)
     for a in anchors:
         for _ in range(INIT_SAMPLES):
             a_x = a.sample_instance()
@@ -39,9 +39,9 @@ def get_b_best_candidates(anchors, instance, model, tau, B):
 
     best_ub_anchor = sorted(anchors, key=lambda a : a.ub, reverse=True)[0]
     best_mean_anchor = sorted(anchors, key=lambda a : a.mean, reverse=True)[0]
-    while abs(best_mean_anchor.ub) - abs(best_ub_anchor.lb) > EPS:
+    while abs(best_mean_anchor.ub) - abs(best_ub_anchor.lb) > eps:
         t += 1
-        beta = compute_beta(t, len(anchors))
+        beta = compute_beta(t, len(anchors), delta)
         for a in (best_mean_anchor, best_ub_anchor):
             a_x = a.sample_instance()
             a_y = model.predict(a_x)
@@ -70,7 +70,7 @@ def get_b_best_candidates(anchors, instance, model, tau, B):
     return sorted(anchors, key=lambda a : a.mean, reverse=True)[:B]
 
 
-def get_best_candidate(anchors, instance, model, tau):
+def get_best_candidate(anchors, instance, model, tau, delta, eps):
     """Determine the best anchor by precision. Poses anchor selection as a multi-armed bandit problem.
     Implements the LUCB algorithm (see https://proceedings.mlr.press/v30/Kaufmann13.pdf)
 
@@ -88,7 +88,7 @@ def get_best_candidate(anchors, instance, model, tau):
     # init bounds by sampling each anchor
     t = 1
     y = model.predict(instance)
-    beta = compute_beta(t, len(anchors))
+    beta = compute_beta(t, len(anchors), delta)
     for a in anchors:
         for _ in range(INIT_SAMPLES):
             a_x = a.sample_instance()
@@ -103,7 +103,7 @@ def get_best_candidate(anchors, instance, model, tau):
     best_ub_anchor = sorted(anchors, key=lambda a : a.ub, reverse=True)[0]
     best_mean_anchor = sorted(anchors, key=lambda a : a.mean, reverse=True)[0]
 
-    while abs(best_mean_anchor.ub) - abs(best_ub_anchor.lb) > EPS:
+    while abs(best_mean_anchor.ub) - abs(best_ub_anchor.lb) > eps:
         # print(abs(best_mean_anchor.ub) - abs(best_ub_anchor.lb))
         # print("Best anchor ub", best_mean_anchor.ub)
         # print("Best anchor mean", best_mean_anchor.mean)
@@ -112,7 +112,7 @@ def get_best_candidate(anchors, instance, model, tau):
         # print("---")
 
         t += 1
-        beta = compute_beta(t, len(anchors))
+        beta = compute_beta(t, len(anchors), delta)
         for a in (best_mean_anchor, best_ub_anchor):
             n = 100
             for _ in range(n):
@@ -145,8 +145,8 @@ def get_best_candidate(anchors, instance, model, tau):
 
 
 
-def compute_beta(t, K):
-    term = np.log(HYPER_K * K * (t ** ALPHA) / DELTA)
+def compute_beta(t, K, delta):
+    term = np.log(HYPER_K * K * (t ** ALPHA) / delta)
     return term + np.log(term)
 
 

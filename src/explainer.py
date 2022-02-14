@@ -1,6 +1,7 @@
 from copy import deepcopy
 import os
 from shutil import rmtree
+import time
 
 import ConfigSpace as CS
 import ConfigSpace.hyperparameters as CSH
@@ -20,7 +21,7 @@ from bo_search import evaluate_rules_from_cs
 
 class Explainer:
 
-    def __init__(self, X : pd.DataFrame) -> None:
+    def __init__(self, X : pd.DataFrame, seed=42) -> None:
         """An explainer object from which explanations
         (aka anchors) for single instances can be computed.
 
@@ -35,13 +36,14 @@ class Explainer:
         for f in self.features:
             # More quantiles might lead to less predicates per anchor but 
             # leads to tighter rules (worse coverage)
-            self.quantiles[f] = np.quantile(X[f], [0.25, 0.5, 0.75])# np.arange(0,1, 0.05))#
+            self.quantiles[f] = np.quantile(X[f], [0.25, 0.5, 0.75])
         
         self.feature2index = {f : self.features.index(f) for f in self.features}
-        self.cs = get_configspace_for_dataset(X)
+        self.cs = get_configspace_for_dataset(X, seed)
+        self.seed = seed
         
 
-    def explain_bottom_up(self, instance, model, tau=0.95):
+    def explain_bottom_up(self, instance, model, tau=0.95, delta=0.1, epsilon=0.2):
         """Bottom-up Construction of Anchors introduced in M. Ribeiro "Anchors: High-Precision Model-Agnostic Explanations".
         Rules of the Anchor are greedily generated.
 
@@ -56,7 +58,8 @@ class Explainer:
         """        
         # initialise empty Anchor
         self.logger.debug(f"Start bottom-up search for {instance}.")
-        anchor = TabularAnchor(self.cs, self.features)
+        prediction = model.predict(instance)[0]
+        anchor = TabularAnchor(self.cs, self.features, self.seed, prediction)
         # get quantiles of instance
         rules = generate_rules_for_instance(self.quantiles, instance, self.feature2index)
         self.logger.debug(f"Generated rules: {rules}")
@@ -64,19 +67,20 @@ class Explainer:
         while True:
             # add unused rules to current anchor
             candidates = self.generate_candidates(anchor, rules)
+            # no candidates found
             if candidates == []:
-                exit("No anchors found, ¯\\_(ツ)_/¯")
+                return None
             # treat anchors as Mulit-Armed Bandidates
-            anchor = get_best_candidate(candidates, instance, model, tau)
-            self.logger.info(f"Current best: P={anchor.mean} (based on {anchor.n_samples} samples), Rules: {anchor.rules}")
+            anchor = get_best_candidate(candidates, instance, model, tau, delta, epsilon)
+            self.logger.debug(f"Current best: P={anchor.mean} (based on {anchor.n_samples} samples), Rules: {anchor.rules}")
             if anchor.mean >= tau:
                 break
         
         anchor.compute_coverage(self.X)
-        self.logger.info(f"Found anchor: P={anchor.mean}, C={anchor.coverage}, Rules:{anchor.rules}")
+        self.logger.debug(f"Found anchor: P={anchor.mean}, C={anchor.coverage}, Rules:{anchor.rules}")
         return anchor
 
-    def explain_beam_search(self, instance, model, tau=0.95, B=1):
+    def explain_beam_search(self, instance, model, tau=0.95, B=1, delta=0.1, epsilon=0.2, timeout=60, seed=42):
         """
         Finds in anchor that explains the given instance w.r.t the model by using beam search.
         In each iteration, beam search keeps a set of good candidates.
@@ -87,18 +91,33 @@ class Explainer:
         :type model: model
         :param tau: desired level of precision, defaults to 0.95
         :type tau: float, optional
+        :param B: B candidates to hold
+        :type B: int, optional
+        :param delta: Hyperparameter, higher leads to less exploration, in [0,1], defaults to 0.1
+        :type delta: float, optional
+        :param epsilon: Break condition, desired difference of ub and lb, defaults to 0.2
+        :type epsilon: float, optional
+        :param timeout: Maximum compute time in seconds, defaults to 60
+        :type timeout: int, optional
+        :param seed: Random seed, defaults to 42
+        :type seed: int, optional
         :return: anchor
         :rtype: TabularAnchor
-        """        
+        """
+        random.seed(seed)
+        np.random.seed(seed)      
         self.logger.debug(f"Start bottom-up search for {instance}.")
         # Init B anchors
-        current_anchors = [TabularAnchor(self.cs, self.features)]
+        prediction = str(model.predict(instance)[0])
+        current_anchors = [TabularAnchor(self.cs, self.features, cls=prediction)]
         best_anchor = current_anchors[0]
         rules = generate_rules_for_instance(self.quantiles, instance, self.feature2index)
         self.logger.debug(f"Generated rules: {rules}")
         random.shuffle(rules)
-        i = 0
-        while True:
+
+        start = time.time()
+        trajectory = []
+        while time.time() - start < timeout:
             # generate candidates for multiple anchors
             candidates = []
             for a in current_anchors:
@@ -107,19 +126,26 @@ class Explainer:
             if len(candidates) == 0:
                 break
             
-            current_anchors = get_b_best_candidates(candidates, instance, model, tau, B)
+            current_anchors = get_b_best_candidates(candidates, instance, model, tau, B, delta, epsilon)
 
+            level_traj = []
             for a in current_anchors:
-                self.logger.info(f"Current best: P={a.mean} (based on {a.n_samples} samples), Rules: {a.rules}")
-
+                a.compute_coverage(self.X)
+                level_traj.append((a.mean, a.n_samples, a.coverage))
+                self.logger.debug(f"Current best: P={a.mean} (based on {a.n_samples} samples), Rules: {a.rules}")
+            trajectory.append(level_traj)
             sufficiently_precise_anchors = [a for a in current_anchors if a.mean > tau]
             for a in sufficiently_precise_anchors:
                 cov = a.compute_coverage(self.X)
                 if cov > best_anchor.coverage:
                     best_anchor = a
-                    self.logger.info(f"Current best: P={best_anchor.mean} (based on {best_anchor.n_samples} samples), Rules: {best_anchor.rules}")
+                    self.logger.debug(f"Current best: P={best_anchor.mean} (based on {best_anchor.n_samples} samples), Rules: {best_anchor.rules}")
 
-        self.logger.info(f"Found anchor: P={best_anchor.mean}, C={best_anchor.coverage}, Rules:{best_anchor.rules}")
+        if time.time() - start > timeout:
+            return None
+            
+        self.logger.debug(f"Found anchor: P={best_anchor.mean}, C={best_anchor.coverage}, Rules:{best_anchor.rules}")
+        best_anchor.trajectory = trajectory
         return best_anchor
 
     def explain_bayesian_optimiziation(self, instance, model, tau=0.95, evaluations=100, samples_per_iteration=100, seed=42, keep_trajectory=False):
@@ -147,8 +173,7 @@ class Explainer:
         if len(instance.shape) == 2:
             inst = instance.squeeze(0)
         smac_cs = CS.ConfigurationSpace()
-        # TODO: create CategoricalHyperparameter for each feature with choices=[0, 1, 2, 3]
-        # create in condition for using no bounds, just lower, just upper and both
+
         for f in self.features:
             hp = self.cs.get_hyperparameter(f)
 
@@ -199,7 +224,7 @@ class Explainer:
         runs = pd.read_json(f"{output_dir}/{newest_run_dir}/traj.json", lines=True)
 
         runs = runs[runs["cost"] < 1 - tau]
-        self.logger.info(f"Found {len(runs)} incumbents matching {tau=}.")
+        self.logger.debug(f"Found {len(runs)} incumbents matching {tau=}.")
         if len(runs) == 0:
             return None
 
@@ -225,7 +250,9 @@ class Explainer:
         
         # return best coverage
         anchor_candidates = sorted(anchor_candidates, key=lambda a : a.coverage)
-        return anchor_candidates[-1]
+        best_cov_anchor = anchor_candidates[-1]
+        best_cov_anchor.cls = model.predict(instance)[0]
+        return best_cov_anchor
 
     def generate_candidates(self, anchor, rules, min_cov=0):
         """Generates new anchor candidates by adding different rules to copies of the same anchor.
@@ -238,6 +265,8 @@ class Explainer:
         :type anchor: TabularAnchor
         :param rules: New rules not yet in anchor
         :type rules: list
+        :param min_cov: Minimum coverage for new candidates
+        :type min_cov: float
         :return: New anchor candidates
         :rtype: list
         """    
@@ -258,17 +287,19 @@ class Explainer:
 
         return new_anchors
 
-def get_configspace_for_dataset(X : pd.DataFrame):
+def get_configspace_for_dataset(X : pd.DataFrame, seed=42):
     """Creates a ConfigSpace for the given dataset.
     The hyperparameters bounds are taken from
     the respective minimum and maximum values of the features.
 
     :param X: Dataset for which to create the configspace
     :type X: pd.DataFrame
+    :param seed: random seed for the configspace, defaults to 42
+    :type seed: int, optional
     :return: ConfigSpace
     :rtype: CS.ConfigurationSpace
     """    
-    cs = CS.ConfigurationSpace()
+    cs = CS.ConfigurationSpace(seed)
     # https://pandas.pydata.org/pandas-docs/stable/user_guide/basics.html#basics-dtypes
     for f in X.columns:
         if X[f].dtype in ("category", "string", "object", "boolean"):

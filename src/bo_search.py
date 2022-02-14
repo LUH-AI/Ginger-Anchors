@@ -27,7 +27,8 @@ def evaluate_rules_from_cs(configuration, model, X, features, explain, iteration
     y = model.predict(explain)
 
     cs = create_configspace_from_configuration(configuration, features, X)
-    anchor = TabularAnchor(cs, features)
+ 
+    anchor = TabularAnchor(cs, features, y[0])
     anchor.compute_coverage(X)
 
     for _ in range(iterations):
@@ -51,7 +52,6 @@ def create_configspace_from_configuration(configuration, features, X):
     :return: ConfigSpace with new bounds
     :rtype: CS.ConfigurationSpace
     """    
-    #TODO: pass featuretypes
     cs = CS.ConfigurationSpace()
     for f in features:
         lm = configuration.get(f + "_lower_mask")
