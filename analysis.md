@@ -11,7 +11,7 @@ The analysis data was acquired by running grid search with the following ranges:
   * Epsilon in [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
   * B in [1, 2, 3, 4, 5, 6, 7]
 
-Running grid search took roughly 24 hours on an AMD EPYC™ 7532 with 500000GB RAM :)
+Running grid search took roughly 24 hours on an AMD EPYC™ 7532 with 500 GB RAM :)
 
 You can click on the images to enlarge them.
 
