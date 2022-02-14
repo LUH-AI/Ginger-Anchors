@@ -5,13 +5,19 @@ from lucb import kullback_leibler
 
 class TabularAnchor:
 
-    def __init__(self, cs : CS.ConfigurationSpace, all_features, seed=42) -> None:
+    def __init__(self, cs : CS.ConfigurationSpace, all_features, seed=42, cls=None) -> None:
         """Anchor for explaining an instance of tabular Dataset. 
 
         :param cs: ConfigurationSpace that is used for sampling
         :type cs: CS.ConfigurationSpace
         :param all_features: all features of the Dataset
         :type all_features: list
+        :param cs: ConfigurationSpace that is used for sampling
+        :type cs: CS.ConfigurationSpace
+        :param seed: seed for configspace
+        :type seed: int
+        :param cls: ground truth of instance to explain
+        :type cls: int
         """        
         self.ub = None # upper bound
         self.ubs = []
@@ -29,6 +35,7 @@ class TabularAnchor:
         self.all_features = all_features # all features in correct order
         self.cs = cs
         self.seed = seed
+        self.cls = cls
 
     @property
     def mean(self):
@@ -207,3 +214,30 @@ class TabularAnchor:
                 new_cs.add_hyperparameter(self.cs.get_hyperparameter(f))
         self.cs = new_cs
 
+    def get_explanation(self):
+        """Returns a human readable summary of the rules.
+
+        :return: Explanation
+        :rtype: str
+        """        
+        rules_string = "IF "
+        for i, rule in enumerate(self.rules):
+            if len(rule) == 5:
+                f, o1, v1, o2, v2 = rule
+                if "<=" == o1 and ">=" == o2:
+                    rules_string += f"{v2} <= {f} <= {v1}"
+                elif ">=" == o1 and "<=" == o2:
+                    rules_string += f"{v1} <= {f} <= {v2}"
+                else:
+                    raise Exception("Unvalid rule", rule)
+            elif len(rule) == 3:
+                f, o, v = rule
+                rules_string += f"{f} {o} {v}"
+            if i != len(self.rules) - 1:
+                rules_string += "\nAND "
+               
+                    
+        rules_string += f"\nTHEN PREDICT CLASS {self.cls} "
+        rules_string += f"\nWITH PRECISION {round(self.mean, 4)} "
+        rules_string += f"\nAND COVERAGE {self.coverage}"
+        return rules_string

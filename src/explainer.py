@@ -58,7 +58,8 @@ class Explainer:
         """        
         # initialise empty Anchor
         self.logger.debug(f"Start bottom-up search for {instance}.")
-        anchor = TabularAnchor(self.cs, self.features, self.seed)
+        prediction = model.predict(instance)[0]
+        anchor = TabularAnchor(self.cs, self.features, self.seed, prediction)
         # get quantiles of instance
         rules = generate_rules_for_instance(self.quantiles, instance, self.feature2index)
         self.logger.debug(f"Generated rules: {rules}")
@@ -96,7 +97,8 @@ class Explainer:
         np.random.seed(seed)      
         self.logger.debug(f"Start bottom-up search for {instance}.")
         # Init B anchors
-        current_anchors = [TabularAnchor(self.cs, self.features)]
+        prediction = str(model.predict(instance)[0])
+        current_anchors = [TabularAnchor(self.cs, self.features, cls=prediction)]
         best_anchor = current_anchors[0]
         rules = generate_rules_for_instance(self.quantiles, instance, self.feature2index)
         self.logger.debug(f"Generated rules: {rules}")
@@ -159,8 +161,7 @@ class Explainer:
         if len(instance.shape) == 2:
             inst = instance.squeeze(0)
         smac_cs = CS.ConfigurationSpace()
-        # TODO: create CategoricalHyperparameter for each feature with choices=[0, 1, 2, 3]
-        # create in condition for using no bounds, just lower, just upper and both
+
         for f in self.features:
             hp = self.cs.get_hyperparameter(f)
 
@@ -237,7 +238,9 @@ class Explainer:
         
         # return best coverage
         anchor_candidates = sorted(anchor_candidates, key=lambda a : a.coverage)
-        return anchor_candidates[-1]
+        best_cov_anchor = anchor_candidates[-1]
+        best_cov_anchor.cls = model.predict(instance)[0]
+        return best_cov_anchor
 
     def generate_candidates(self, anchor, rules, min_cov=0):
         """Generates new anchor candidates by adding different rules to copies of the same anchor.
