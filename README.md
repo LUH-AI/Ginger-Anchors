@@ -57,7 +57,7 @@ To reproduce the raw data, run:
 ```bash
 ginger-anchors> python src/analysis.py
 ```
-
+A preview can be found in our writeup: [analysis.md](https://github.com/automl-classroom/iml-ws21-projects-ginger-anchors/blob/main/analysis.md)
 ## Authors
 
 [Jim Rhotert](https://github.com/Dschimm) & [Julian Bilsky](https://github.com/julianbil)
