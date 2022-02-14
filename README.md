@@ -29,8 +29,8 @@ References:
 
 Create a conda environment
   ```bash
-  conda env create
-  conda activate ginger-anchors
+ $ conda env create
+ $ conda activate ginger-anchors
   ```
   *Note: swig is needed to install smac3. See [installation instructions](https://automl.github.io/SMAC3/master/pages/getting_started/installation.html).*
 
@@ -46,7 +46,7 @@ print(anchor.get_explanation())
 
 ```
 
-For a more detailed example, see src/main.py.
+For a more detailed example, see [src/main.py](https://github.com/automl-classroom/iml-ws21-projects-ginger-anchors/blob/main/src/main.py).
 
 ## Analysis
 
@@ -55,7 +55,7 @@ The plots were too large to put them into this repository. Please download them 
 To reproduce the raw data, run:
 
 ```bash
-python src/analysis.py
+ginger-anchors> python src/analysis.py
 ```
 
 ## Authors
