@@ -15,9 +15,9 @@ Running grid search took roughly 24 hours on an AMD EPYC™ 7532 with 500 GB RAM
 
 You can click on the images to enlarge them.
 
-<img src="https://seafile.cloud.uni-hannover.de/seafhttp/files/96030b00-0b7b-4fad-bfe3-cc12a43537a2/2d_parameter_effect_3.png" width="500" height="500"></img>
-<img src="https://seafile.cloud.uni-hannover.de/seafhttp/files/d0816860-0333-4c5f-ba70-4a599b14e424/2d_parameter_effect_111.png" width="500" height="500"></img>
-<img src="https://seafile.cloud.uni-hannover.de/seafhttp/files/ccc4ac14-d054-40ec-b3c8-8884cc4e0eec/2d_parameter_effect_155.png" width="500" height="500"></img>
+<img src="https://github.com/automl-classroom/iml-ws21-projects-ginger-anchors/blob/main/analysis/2d_parameter_effect_3.png" width="500" height="500"></img>
+<img src="https://github.com/automl-classroom/iml-ws21-projects-ginger-anchors/blob/main/analysis/2d_parameter_effect_111.png" width="500" height="500"></img>
+<img src="https://github.com/automl-classroom/iml-ws21-projects-ginger-anchors/blob/main/analysis/2d_parameter_effect_155.png" width="500" height="500"></img>
 
 
 As we can see, the biggest effect is caused by altering B or epsilon.
