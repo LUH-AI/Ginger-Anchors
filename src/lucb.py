@@ -39,7 +39,8 @@ def get_b_best_candidates(anchors, instance, model, B, delta, eps):
 
     best_ub_anchor = sorted(anchors, key=lambda a : a.ub, reverse=True)[0]
     best_mean_anchor = sorted(anchors, key=lambda a : a.mean, reverse=True)[0]
-    while abs(best_mean_anchor.ub) - abs(best_ub_anchor.lb) > eps:
+    
+    while abs(best_ub_anchor.ub) - abs(best_mean_anchor.lb) > eps:
         t += 1
         beta = compute_beta(t, len(anchors), delta)
         for a in (best_mean_anchor, best_ub_anchor):
@@ -90,7 +91,7 @@ def get_best_candidate(anchors, instance, model, delta, eps):
     best_ub_anchor = sorted(anchors, key=lambda a : a.ub, reverse=True)[0]
     best_mean_anchor = sorted(anchors, key=lambda a : a.mean, reverse=True)[0]
 
-    while abs(best_mean_anchor.ub) - abs(best_ub_anchor.lb) > eps:
+    while abs(best_ub_anchor.ub) - abs(best_mean_anchor.lb) > eps:
         t += 1
         beta = compute_beta(t, len(anchors), delta)
         for a in (best_mean_anchor, best_ub_anchor):
@@ -106,6 +107,7 @@ def get_best_candidate(anchors, instance, model, delta, eps):
             a.compute_lb(beta)
         best_ub_anchor = sorted(anchors, key=lambda a : a.ub, reverse=True)[0]
         best_mean_anchor = sorted(anchors, key=lambda a : a.mean, reverse=True)[0]
+
 
     return best_mean_anchor
 
