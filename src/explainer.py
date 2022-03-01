@@ -34,7 +34,7 @@ class Explainer:
             self.logger = new_logger(self.__class__.__name__)
         else:
             self.logger = logger
-            
+
         self.X = X
         self.features = list(X.columns)
         self.quantiles = {}
@@ -114,7 +114,7 @@ class Explainer:
         np.random.seed(seed)      
         self.logger.debug(f"Start bottom-up search for {instance}.")
         # Init B anchors
-        prediction = str(model.predict(instance)[0])
+        prediction = model.predict(instance)[0]
         current_anchors = [TabularAnchor(self.cs, self.features, cls=prediction)]
         best_anchor = current_anchors[0]
         rules = generate_rules_for_instance(self.quantiles, instance, self.feature2index)

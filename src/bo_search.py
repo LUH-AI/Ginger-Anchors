@@ -24,11 +24,11 @@ def evaluate_rules_from_cs(configuration, model, X, features, explain, iteration
     :return: 1 - precision
     :rtype: float
     """    
-    y = model.predict(explain)
+    y = model.predict(explain)[0]
 
     cs = create_configspace_from_configuration(configuration, features, X)
  
-    anchor = TabularAnchor(cs, features, y[0])
+    anchor = TabularAnchor(cs, features, y)
     anchor.compute_coverage(X)
 
     for _ in range(iterations):
