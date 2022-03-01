@@ -21,14 +21,20 @@ from bo_search import evaluate_rules_from_cs
 
 class Explainer:
 
-    def __init__(self, X : pd.DataFrame, seed=42) -> None:
+    def __init__(self, X : pd.DataFrame, seed=42, logger=None) -> None:
         """An explainer object from which explanations
         (aka anchors) for single instances can be computed.
 
         :param X: Dataset used to train the model
         :type X: pd.DataFrame
+        :param seed: seed for configspace
+        :type seed: int
         """
-        self.logger = new_logger(self.__class__.__name__)  
+        if logger is None:
+            self.logger = new_logger(self.__class__.__name__)
+        else:
+            self.logger = logger
+            
         self.X = X
         self.features = list(X.columns)
         self.quantiles = {}
@@ -134,6 +140,7 @@ class Explainer:
                 level_traj.append((a.mean, a.n_samples, a.coverage))
                 self.logger.debug(f"Current best: P={a.mean} (based on {a.n_samples} samples), Rules: {a.rules}")
             trajectory.append(level_traj)
+
             sufficiently_precise_anchors = [a for a in current_anchors if a.mean > tau]
             for a in sufficiently_precise_anchors:
                 cov = a.compute_coverage(self.X)
@@ -177,8 +184,8 @@ class Explainer:
         for f in self.features:
             hp = self.cs.get_hyperparameter(f)
 
-            low_hp =  hp.__class__(f + "_lower", lower=hp.lower, upper=inst[self.features.index(f)], q=0.0001, log=False)
-            up_hp = hp.__class__(f + "_upper", lower=inst[self.features.index(f)], upper=hp.upper, q=0.0001, log=False)
+            low_hp =  hp.__class__(f + "_lower", lower=hp.lower, upper=inst[self.features.index(f)], log=False)
+            up_hp = hp.__class__(f + "_upper", lower=inst[self.features.index(f)], upper=hp.upper, log=False)
             smac_cs.add_hyperparameters([low_hp, up_hp])
 
             lower_mask = CSH.CategoricalHyperparameter(f + "_lower_mask", choices=[0, 1])

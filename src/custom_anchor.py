@@ -33,9 +33,9 @@ class TabularAnchor:
         self.rules = [] # raw rules
         
         self.all_features = all_features # all features in correct order
-        self.cs = cs
+        self.cs = cs # configspace that reflects anchor pertubation space
         self.seed = seed
-        self.cls = cls
+        self.cls = cls # model prediction of instance to explain
 
     @property
     def mean(self):
