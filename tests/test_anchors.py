@@ -11,8 +11,8 @@ from sklearn.model_selection import train_test_split
 cwd = os.getcwd()
 sys.path.insert(0, cwd + "/src")
 
-from custom_anchor import TabularAnchor
-from explainer import Explainer, generate_rules_for_instance
+from ginger_anchors.custom_anchor import TabularAnchor
+from ginger_anchors.explainer import Explainer, generate_rules_for_instance
 
 
 @pytest.fixture(scope="session")

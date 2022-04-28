@@ -9,7 +9,6 @@ def evaluate_rules_from_cs(configuration, model, X, features, explain, iteration
     """Creates an anchor from the rules generated from the configuration
     and estimates the precision.
 
-
     :param configuration: Configuration that contains upper and lower bounds for each features
     :type configuration: CS.configuration_space.Configuration
     :param model: The model to be estimated by the anchor

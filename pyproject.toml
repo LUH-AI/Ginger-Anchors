@@ -2,8 +2,8 @@
 # https://learnxinyminutes.com/docs/toml/
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]             # path to the test directory
-minversion = "3.8"
+testpaths = ["tests"]            # path to the test directory
+minversion = "3.9"
 addopts = "--cov=ginger_anchors" # Should be package name
 
 [tool.coverage.run]
@@ -24,11 +24,11 @@ exclude_lines = [
 ] # These are lines to exclude from coverage
 
 [tool.black]
-target-version = ['py38']
+target-version = ['py39']
 line-length = 100
 
 [tool.isort]
-py_version = "38"
+py_version = "39"
 profile = "black" # Play nicely with black
 src_paths = ["ginger_anchors", "tests"]
 known_types = ["typing", "abc"] # We put these in their own section "types"
@@ -44,4 +44,3 @@ sections = [
     "LOCALFOLDER",
 ] # section ordering
 multi_line_output = 3 # https://pycqa.github.io/isort/docs/configuration/multi_line_output_modes.html
-

@@ -19,12 +19,14 @@ The re-implementation was done in the iML lecture (WS21/22).
 
 ## Installation
 
+*Note: swig is needed to install SMAC3. See [installation instructions](https://automl.github.io/SMAC3/master/pages/getting_started/installation.html).*
+
 Create a conda environment
 ```bash
-$ conda env create
+$ conda create -n GingerAnchors python=3.9
 $ conda activate ginger-anchors
+$ pip install .
 ```
-*Note: swig is needed to install SMAC3. See [installation instructions](https://automl.github.io/SMAC3/master/pages/getting_started/installation.html).*
 
 
 ## Usage

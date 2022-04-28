@@ -1,3 +1,6 @@
+pandas
+numpy
+seaborn
 ConfigSpace
 anchor-exp
 scikit-learn
