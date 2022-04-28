@@ -127,6 +127,3 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-smac3*/
-smac_run/
-images/

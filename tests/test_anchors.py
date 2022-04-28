@@ -1,17 +1,18 @@
-import pytest
-import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
+import os
+import sys
+
 import ConfigSpace as CS
 import ConfigSpace.hyperparameters as CSH
-import sys
-import os
+import pandas as pd
+import pytest
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+
 cwd = os.getcwd()
 sys.path.insert(0, cwd + "/src")
 
 from custom_anchor import TabularAnchor
 from explainer import Explainer, generate_rules_for_instance
-
 
 
 @pytest.fixture(scope="session")
@@ -22,8 +23,10 @@ def prepared_data():
     X = data.drop(columns=["Type"]).to_numpy()
     y = data["Type"].to_numpy()
     instance = X[3].reshape(1, -1)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
-    
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y
+    )
+
     # prepare model
     print("Preparing classifier...")
     model = RandomForestClassifier(n_estimators=10)
@@ -37,11 +40,13 @@ def prepared_data():
     prepared["instance"] = instance
     return prepared
 
+
 def test_empty_anchor_coverage(prepared_data):
     X = prepared_data["X"]
     exp = Explainer(X)
     anchor = TabularAnchor(exp.cs, exp.features)
     assert anchor.compute_coverage(prepared_data["X"]) == 1
+
 
 def test_generate_candidates(prepared_data):
     # test whether rules are added correctly
@@ -58,6 +63,7 @@ def test_generate_candidates(prepared_data):
     candidates = exp.generate_candidates(anchor, rules)
     assert len(candidates) == len(rules) - 1
 
+
 def test_sampling_instance(prepared_data):
     # test for correct order of features by checking feature range
     X = prepared_data["X"]
@@ -65,10 +71,10 @@ def test_sampling_instance(prepared_data):
     anchor = TabularAnchor(exp.cs, exp.features)
     x = anchor.sample_instance()
     assert x.shape == (1, len(exp.features))
-    for f,i in exp.feature2index.items():
+    for f, i in exp.feature2index.items():
         assert x[0][i] >= X[f].min()
         assert x[0][i] <= X[f].max()
-    
+
 
 def test_rule_generation(prepared_data):
     # test rule generation for given instance and quantiles
@@ -86,19 +92,19 @@ def test_rule_generation(prepared_data):
     want_rules = [
         ("Area", ">=", 12.33),
         ("Area", "<=", 14.43),
-        ("Area", ">=", 12.33,"<=", 14.43),
+        ("Area", ">=", 12.33, "<=", 14.43),
         ("Perimeter", ">=", 13.47),
         ("Perimeter", "<=", 14.37),
-        ("Perimeter", ">=", 13.47,"<=", 14.37),
+        ("Perimeter", ">=", 13.47, "<=", 14.37),
         ("Compactness", ">=", 0.8868),
         ("Kernel.Length", ">=", 5.267),
         ("Kernel.Length", "<=", 5.541),
-        ("Kernel.Length", ">=", 5.267,"<=", 5.541),
+        ("Kernel.Length", ">=", 5.267, "<=", 5.541),
         ("Kernel.Width", ">=", 3.245),
         ("Kernel.Width", "<=", 3.5645),
-        ("Kernel.Width", ">=", 3.245,"<=", 3.5645),
+        ("Kernel.Width", ">=", 3.245, "<=", 3.5645),
         ("Asymmetry.Coeff", "<=", 2.57),
-        ("Kernel.Groove", "<=", 5.046)
+        ("Kernel.Groove", "<=", 5.046),
     ]
     got_rules = generate_rules_for_instance(exp.quantiles, instance, exp.feature2index)
     assert len(got_rules) == len(want_rules)
@@ -129,16 +135,20 @@ def test_add_rule(prepared_data):
     hp = anchor.cs.get_hyperparameter(exp.features[2])
     assert hp.lower == prepared_data["X"][exp.features[2]].min()
 
+
 def test_instance_satisfies_anchor_bottomup(prepared_data):
     exp = Explainer(prepared_data["X"])
     anchor = exp.explain_bottom_up(prepared_data["instance"], prepared_data["model"], tau=0.95)
     assert anchor.is_satisfied(prepared_data["instance"])
     assert anchor.mean > 0.95
     assert len(anchor.rules) > 1
-    
+
+
 def test_instance_satisfies_anchor_beam(prepared_data):
     exp = Explainer(prepared_data["X"])
-    anchor = exp.explain_beam_search(prepared_data["instance"], prepared_data["model"], B=3, tau=0.95)
+    anchor = exp.explain_beam_search(
+        prepared_data["instance"], prepared_data["model"], B=3, tau=0.95
+    )
     assert anchor.is_satisfied(prepared_data["instance"])
     assert anchor.mean > 0.95
     assert len(anchor.rules) > 1
@@ -146,7 +156,9 @@ def test_instance_satisfies_anchor_beam(prepared_data):
 
 def test_instance_satisfies_bayesian_optimization(prepared_data):
     exp = Explainer(prepared_data["X"])
-    anchor = exp.explain_bayesian_optimiziation(prepared_data["instance"], prepared_data["model"], evaluations=30, tau=0.7)
+    anchor = exp.explain_bayesian_optimiziation(
+        prepared_data["instance"], prepared_data["model"], evaluations=30, tau=0.7
+    )
     assert anchor.is_satisfied(prepared_data["instance"])
     assert anchor.mean > 0.7
     assert len(anchor.rules) > 1

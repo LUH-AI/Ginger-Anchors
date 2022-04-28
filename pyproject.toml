@@ -1,0 +1,47 @@
+# For TOML reference
+# https://learnxinyminutes.com/docs/toml/
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]             # path to the test directory
+minversion = "3.8"
+addopts = "--cov=ginger_anchors" # Should be package name
+
+[tool.coverage.run]
+branch = true
+context = "ginger_anchors" # Should be package name
+omit = [
+    "ginger_anchors/__init__.py", # Has variables only needed for setup.py
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_lines = [
+    "pragma: no cover",
+    '\.\.\.',
+    "raise NotImplementedError",
+    "if TYPE_CHECKING",
+] # These are lines to exclude from coverage
+
+[tool.black]
+target-version = ['py38']
+line-length = 100
+
+[tool.isort]
+py_version = "38"
+profile = "black" # Play nicely with black
+src_paths = ["ginger_anchors", "tests"]
+known_types = ["typing", "abc"] # We put these in their own section "types"
+known_test = ["tests"]
+known_first_party = ["ginger_anchors"]
+sections = [
+    "FUTURE",
+    "TYPES",
+    "STDLIB",
+    "THIRDPARTY",
+    "FIRSTPARTY",
+    "TEST",
+    "LOCALFOLDER",
+] # section ordering
+multi_line_output = 3 # https://pycqa.github.io/isort/docs/configuration/multi_line_output_modes.html
+
