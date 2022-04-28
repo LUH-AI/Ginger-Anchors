@@ -24,8 +24,8 @@ The re-implementation was done in the iML lecture (WS21/22).
 Create a conda environment
 ```bash
 $ conda create -n GingerAnchors python=3.9
-$ conda activate ginger-anchors
-$ pip install .
+$ conda activate GingerAnchors
+$ pip install ginger-anchors
 ```
 
 

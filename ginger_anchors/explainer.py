@@ -85,6 +85,7 @@ class Explainer:
         self.logger.debug(
             f"Found anchor: P={anchor.mean}, C={anchor.coverage}, Rules:{anchor.rules}"
         )
+
         return anchor
 
     def explain_beam_search(

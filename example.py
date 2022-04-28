@@ -5,8 +5,8 @@ from sklearn.model_selection import train_test_split
 from ginger_anchors.explainer import Explainer
 
 if "__main__" == __name__:
-    # prepare data
-    print("Preparing data...")
+    # Prepare data
+    print("Preparing data ...")
     data = pd.read_csv("data/wheat_seeds.csv")
     i_idx = 111
     X_df = data.drop(columns=["Type"])
@@ -17,27 +17,23 @@ if "__main__" == __name__:
         X, y, test_size=0.2, random_state=42, stratify=y
     )
 
-    # prepare model
-    print("Preparing classifier...")
-    model = RandomForestClassifier(n_estimators=10)
+    # Prepare model
+    print("Preparing classifier ...")
+    model = RandomForestClassifier(n_estimators=10, random_state=0)
     model.fit(X_train, y_train)
     preds = model.predict(X_test)
     print("Classifier accuracy:", sum(preds == y_test) / len(y_test))
 
-    # GET BOTTOM UP EXPLANATION
     exp = Explainer(X_df)
-    anchor = exp.explain_bottom_up(instance, model, tau=0.95)
-    # print("Precision:", anchor.mean)
-    # print("Coverage:", anchor.coverage)
-    # print("Sampled:", anchor.n_samples)
-    print(anchor.get_explanation())
 
-    # GET BEAM SEARCH EXPLANATION
+    # Get beam search explanation
     anchor = exp.explain_beam_search(instance, model, tau=0.95, B=3)
+    print("\nBeam search explanation:")
     print(anchor.get_explanation())
 
-    # GET BO SEARCH EXPLANATION
+    # Get smac explanation
     anchor = exp.explain_bayesian_optimiziation(
         instance, model, evaluations=64, samples_per_iteration=500, tau=0.8
     )
+    print("\nSMAC explanation")
     print(anchor.get_explanation())
